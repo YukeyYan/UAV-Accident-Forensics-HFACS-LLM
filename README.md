@@ -8,82 +8,76 @@
 
 ## 🎯 Project Overview
 
-**A groundbreaking intelligent UAV accident forensics system that revolutionizes aviation safety analysis by integrating the Human Factors Analysis and Classification System (HFACS) 8.0 framework with Large Language Model (LLM) reasoning capabilities.** This research addresses the critical gap in low-altitude UAV safety analysis, providing unprecedented insights into accident causation patterns and human factors in unmanned aviation operations.
+**An intelligent UAV accident forensics system that integrates the Human Factors Analysis and Classification System (HFACS) 8.0 framework with Large Language Model (LLM) reasoning capabilities.** This research explores the application of AI-assisted analysis to low-altitude UAV safety, providing insights into accident causation patterns and human factors in unmanned aviation operations.
 
 ### 🌟 Academic Significance
 
-This project represents a **paradigm shift** in aviation safety research by:
+This project contributes to aviation safety research by:
 
-- **Bridging Traditional Aviation Safety with Modern AI**: First comprehensive integration of HFACS 8.0 framework with LLM reasoning for UAV accident analysis
-- **Advancing Human Factors Research**: Novel application of AI-driven narrative analysis to extract complex human factors patterns from unstructured incident reports
-- **Contributing to Safety Science**: Establishing new methodologies for automated safety analysis that can be applied across aviation domains
-- **Enhancing Forensic Capabilities**: Developing AI-assisted forensic tools that augment human expert analysis with machine intelligence
+- **Bridging Traditional Aviation Safety with Modern AI**: Integration of HFACS 8.0 framework with LLM reasoning for UAV accident analysis
+- **Advancing Human Factors Research**: Application of AI-driven narrative analysis to extract human factors patterns from unstructured incident reports
+- **Contributing to Safety Science**: Developing methodologies for automated safety analysis that can be applied across aviation domains
+- **Enhancing Forensic Capabilities**: Creating AI-assisted forensic tools that augment human expert analysis with machine intelligence
 
-### 🏭 Engineering Innovation
+### 🏭 Engineering Features
 
-The system introduces several **cutting-edge engineering solutions**:
+The system implements several technical solutions:
 
-- **Hybrid AI Architecture**: Seamless integration of rule-based HFACS classification with neural language models
-- **Real-time Knowledge Graph Construction**: Dynamic visualization of causal relationships between incident factors
+- **Hybrid AI Architecture**: Integration of rule-based HFACS classification with neural language models
+- **Knowledge Graph Construction**: Visualization of causal relationships between incident factors
 - **Multi-modal Analysis Pipeline**: Combining structured data processing with unstructured text analysis
-- **Scalable Microservices Design**: Docker-containerized architecture supporting high-throughput analysis
-- **Interactive 3D Visualization Engine**: Advanced WebGL-based rendering for complex safety data relationships
+- **Containerized Design**: Docker-based architecture for deployment flexibility
+- **Interactive Visualization Engine**: WebGL-based rendering for safety data relationships
 
-### 🌍 Real-World Impact
+### 🌍 Potential Applications
 
-This research addresses **critical safety challenges** in the rapidly expanding UAV industry:
+This research explores applications in UAV safety analysis:
 
-#### Aviation Safety Enhancement
-- **Proactive Risk Identification**: Early detection of emerging safety patterns before they lead to accidents
-- **Evidence-Based Policy Making**: Data-driven insights for regulatory bodies and safety organizations
-- **Training Program Optimization**: Identification of critical human factors training needs
-- **Operational Safety Improvement**: Real-time safety recommendations for UAV operators
+#### Aviation Safety Research
+- **Risk Pattern Analysis**: Detection of safety patterns in incident data
+- **Evidence-Based Analysis**: Data-driven insights for safety research
+- **Training Support**: Identification of human factors training areas
+- **Safety Assessment**: Systematic analysis of UAV safety incidents
 
-#### Economic Significance
-- **Accident Prevention**: Potential to prevent millions in damages through predictive safety analysis
-- **Insurance Risk Assessment**: Enhanced actuarial models for UAV insurance pricing
-- **Regulatory Compliance**: Automated compliance checking and reporting capabilities
-- **Industry Standardization**: Contributing to international UAV safety standards development
+#### Research Applications
+- **Academic Research**: Tool for aviation safety and human factors studies
+- **Safety Analysis**: Systematic approach to incident investigation
+- **Data Processing**: Automated analysis of large incident datasets
+- **Methodology Development**: Framework for AI-assisted safety analysis
 
-#### Societal Benefits
-- **Public Safety**: Improved safety in urban UAV operations and delivery services
-- **Emergency Response**: Enhanced safety analysis for search and rescue UAV operations
-- **Infrastructure Protection**: Better understanding of UAV risks to critical infrastructure
-- **Environmental Safety**: Analysis of UAV impacts on wildlife and environmental systems
+## 🚀 Core Research Components
 
-## 🚀 Core Research Contributions
+### 1. **HFACS-LLM Integration Framework**
+- Integration of traditional aviation safety taxonomy with AI reasoning
+- 18-category HFACS 8.0 classification with confidence scoring
+- Automated human factors extraction from unstructured incident narratives
+- Multi-level causation analysis spanning organizational, supervisory, precondition, and unsafe act levels
 
-### 1. **Novel HFACS-LLM Integration Framework**
-- **First-of-its-kind** fusion of traditional aviation safety taxonomy with modern AI reasoning
-- **18-category HFACS 8.0 classification** enhanced with confidence scoring and uncertainty quantification
-- **Automated human factors extraction** from unstructured incident narratives
-- **Multi-level causation analysis** spanning organizational, supervisory, precondition, and unsafe act levels
+### 2. **AI-Driven Narrative Analysis**
+- Smart Form Assistant: Narrative-first approach to incident reporting
+- Question Generation: Domain-specific AI questioning based on aviation safety knowledge
+- Field Extraction: Information extraction with uncertainty measures
+- Contextual Understanding: Semantic analysis of aviation terminology and concepts
 
-### 2. **Advanced AI-Driven Narrative Analysis**
-- **Smart Form Assistant**: Revolutionary narrative-first approach to incident reporting
-- **Professional Question Generation**: Domain-specific AI questioning based on aviation safety expertise
-- **Confidence-Weighted Field Extraction**: Probabilistic information extraction with uncertainty measures
-- **Contextual Understanding**: Deep semantic analysis of aviation terminology and concepts
+### 3. **Knowledge Graph Construction**
+- Causal Network Visualization: Construction of incident factor relationships
+- Hierarchical Representations: Multi-dimensional visualization of HFACS taxonomy
+- Pattern Recognition: Analysis of safety trends in historical data
+- Case Retrieval: AI-powered matching of similar historical incidents
 
-### 3. **Interactive Knowledge Graph Construction**
-- **Dynamic Causal Network Visualization**: Real-time construction of incident factor relationships
-- **3D Hierarchical Representations**: Multi-dimensional visualization of HFACS taxonomy
-- **Temporal Pattern Recognition**: Time-series analysis of safety trends and emerging risks
-- **Similarity-Based Case Retrieval**: AI-powered matching of historical incidents
+### 4. **Visualization System**
+- Multi-Modal Dashboard: Integration of statistical analysis with interactive exploration
+- Risk Assessment: Multi-dimensional risk visualization
+- Incident Flow Diagrams: Sequential visualization of accident progression
+- WebGL Rendering: 3D graphics for complex data relationships
 
-### 4. **Comprehensive Visualization Ecosystem**
-- **Multi-Modal Dashboard**: Integration of 2D statistical analysis with 3D interactive exploration
-- **Real-Time Risk Radar**: Six-dimensional risk assessment visualization
-- **Incident Flow Diagrams**: Sequential visualization of accident progression
-- **WebGL-Accelerated Rendering**: High-performance 3D graphics for complex data relationships
-
-## 💡 Technical Innovation Highlights
+## 💡 Technical Features
 
 ### **Hybrid Intelligence Architecture**
 - **Human-AI Collaboration**: Augmenting expert analysis rather than replacing human judgment
 - **Explainable AI**: Transparent reasoning processes with confidence intervals and uncertainty measures
-- **Adaptive Learning**: System improves accuracy through continuous feedback and validation
-- **Domain-Specific Fine-Tuning**: Aviation safety knowledge embedded in AI reasoning processes
+- **Feedback Integration**: System incorporates user feedback for improvement
+- **Domain Knowledge**: Aviation safety knowledge embedded in AI reasoning processes
 
 ### **Scalable Engineering Design**
 - **Microservices Architecture**: Containerized components for horizontal scaling
@@ -198,8 +192,8 @@ Report Generation → Visualization → Expert Review → Database Storage
 #### **1. Repository Setup**
 ```bash
 # Clone the research repository
-git clone https://github.com/yourusername/UAV-accident-forensics-via-HFACS-LLM-reasoning.git
-cd UAV-accident-forensics-via-HFACS-LLM-reasoning
+git clone https://github.com/YukeyYan/UAV-Accident-Forensics-HFACS-LLM.git
+cd UAV-Accident-Forensics-HFACS-LLM
 
 # Verify Python version
 python --version  # Should be 3.8+
@@ -584,33 +578,19 @@ This research builds upon established aviation safety frameworks and modern AI m
 - **Research Collaboration**: [Collaboration Email]
 - **Media Inquiries**: [Media Contact]
 
-## 🏆 Recognition and Awards
-
-### **Research Excellence**
-- **Innovation Award**: [Award Name] for AI applications in aviation safety
-- **Best Paper Award**: [Conference Name] for HFACS-LLM integration research
-- **Safety Innovation Recognition**: [Organization] for advancing UAV safety analysis
-- **Open Science Award**: [Institution] for reproducible research practices
-
 ## 🙏 Acknowledgments
 
 ### **Research Support**
-- **Funding Agencies**: [Grant Numbers and Funding Sources]
+- **Funding Agencies**: CSC (China Scholarship Council) Chinese Government Scholarship
 - **Data Providers**: Aviation Safety Reporting System (ASRS) - NASA
 - **Technology Partners**: OpenAI for GPT-4o-mini API access
-- **Academic Institutions**: [University/Institution Names]
+- **Academic Institutions**: University of Newcastle, Australia
 
 ### **Technical Contributors**
 - **Open Source Community**: Streamlit, Plotly, Three.js development teams
 - **Research Collaborators**: Aviation safety experts and human factors specialists
 - **Student Researchers**: Graduate and undergraduate research assistants
 - **Industry Advisors**: Professional pilots, safety managers, and regulatory experts
-
-### **Special Recognition**
-- **Aviation Safety Foundation**: For supporting UAV safety research initiatives
-- **International Association of Aviation Safety**: For promoting safety science advancement
-- **Human Factors and Ergonomics Society**: For human factors research methodology guidance
-- **IEEE Aerospace and Electronic Systems Society**: For technical standards and best practices
 
 ---
 
@@ -626,7 +606,7 @@ If you use this system in your research, please cite:
   author={[Your Name] and [Co-authors]},
   year={2024},
   month={December},
-  url={https://github.com/yourusername/UAV-accident-forensics-via-HFACS-LLM-reasoning},
+  url={https://github.com/YukeyYan/UAV-Accident-Forensics-HFACS-LLM},
   doi={10.5281/zenodo.XXXXXXX},
   version={1.0.0},
   license={MIT}
