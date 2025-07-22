@@ -39,7 +39,7 @@ class AIAnalyzer:
             api_key: OpenAI API key
             db_path: Database path
         """
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.db_path = db_path
         
         if not self.api_key:

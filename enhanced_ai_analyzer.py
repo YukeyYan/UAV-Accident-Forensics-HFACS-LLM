@@ -100,7 +100,7 @@ class EnhancedAIAnalyzer:
     """增强型AI分析器 - 专业级无人机事故调查分析"""
     
     def __init__(self, api_key: Optional[str] = None, db_path: str = "asrs_data.db"):
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.db_path = db_path
         self.use_mock = not bool(self.api_key)
         

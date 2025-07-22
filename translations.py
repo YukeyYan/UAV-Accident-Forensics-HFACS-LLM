@@ -14,7 +14,7 @@ TRANSLATIONS = {
         # Sidebar
         'system_config': '⚙️ System Configuration',
         'select_ai_model': '🤖 Select AI Model',
-        'model_help': 'gpt-4o provides higher quality analysis, gpt-4o-mini responds faster',
+        'model_help': 'GPT-4o provides higher quality analysis, GPT-4o-mini responds faster',
         'select_function_page': 'Select Function Page',
         'language_setting': '🌐 Language Setting',
         
@@ -29,8 +29,19 @@ TRANSLATIONS = {
         'smart_report_submission': 'Smart Report Submission',
         
         # System status
-        'data_loaded': '✅ Historical data loaded',
-        'data_not_loaded': '⚠️ Please load historical data in Data Management page first',
+        'data_loaded': '<span style="color: #28a745;">✅ Historical data loaded</span>',
+        'data_not_loaded': '<span style="color: #dc3545;">⚠️ Please load historical data in Data Management page first</span>',
+        'system_status': '🖥️ System Status',
+        'enhanced_features': 'Enhanced Features',
+        'causal_diagram': 'Causal Diagram',
+        'historical_data': 'Historical Data',
+        'api_status': 'API Status',
+        'available': '<span style="color: #28a745;">✅ Available</span>',
+        'unavailable': '<span style="color: #dc3545;">❌ Unavailable</span>',
+        'loaded': '<span style="color: #28a745;">✅ Loaded</span>',
+        'not_loaded': '<span style="color: #ffc107;">⚠️ Not Loaded</span>',
+        'configured': '<span style="color: #28a745;">✅ Configured</span>',
+        'not_configured': '<span style="color: #dc3545;">❌ Not Configured</span>',
         
         # System overview page
         'system_overview_title': '📊 System Overview',
@@ -59,7 +70,10 @@ TRANSLATIONS = {
         'load_data_button': '🚀 Load Data',
         'loading_data': '⏳ Loading data...',
         'data_loaded_success': '✅ Data loaded successfully!',
-        'total_records': 'Total records',
+        'data_load_success': '✅ Data loaded successfully!',
+        'data_loaded_info': 'Successfully loaded',
+        'records': 'Records',
+        'total_records': 'Total Records',
         'data_preview': '📋 Data Preview',
         'no_file_uploaded': '⚠️ Please upload a CSV file first',
         
@@ -87,7 +101,7 @@ TRANSLATIONS = {
         'causal_analysis_results': '🎯 Causal Analysis Results',
         'ai_causal_analysis': '🤖 AI Causal Analysis',
         'causal_confirmation': 'Causal Analysis Confirmation',
-        'confirm_causal_analysis': 'Would you like to jump to Causal Analysis?',
+        'confirm_causal_analysis': 'Would You Like to Jump to Causal Analysis?',
         'yes_go_causal_analysis': 'Yes, Go to Causal Analysis',
         
         # HFACS analysis
@@ -158,7 +172,75 @@ TRANSLATIONS = {
         'resource': 'Resource',
         'direct_cause': 'Direct Cause',
         'contributing_cause': 'Contributing Factor',
-        'enabling_condition': 'Enabling Condition'
+        'enabling_condition': 'Enabling Condition',
+        
+        # Button labels - properly capitalized
+        'answer_questions': 'Answer Questions',
+        'submit_directly': 'Submit Directly', 
+        'return_edit': 'Return to Edit',
+        'answer_questions_desc': 'Answer AI-Generated Questions to Complete Missing Information',
+        'edit_results': 'Edit Results',
+        'continue_review': 'Continue Review',
+        'reextract': 'Re-extract',
+        'submit_answers': 'Submit Answers',
+        'enter_final_review': 'Enter Final Review',
+        'skip_and_review': 'Skip and Review',
+        'refresh_questions': 'Refresh Questions',
+        'submit_asrs_report': 'Submit ASRS Report',
+        'restart': 'Restart',
+        'retry': 'Retry',
+        'load_asrs_data': 'Load ASRS Data',
+        'save_changes': 'Save Changes',
+        'reanalyze': 'Re-analyze',
+        'goto_asrs_smart_report': 'Go to ASRS Smart Report',
+        
+        # Error and status messages
+        'data_load_failed': '❌ Data loading failed: {0}',
+        'file_not_found': '❌ File not found: {0}',
+        'ai_extraction_complete': '✅ AI extraction completed successfully!',
+        
+        # Confirmation buttons
+        'confirm': 'Confirm',
+        'cancel': 'Cancel', 
+        'yes_go_causal_analysis': 'Yes, Go to Causal Analysis',
+        'no_stay_here': 'No, Stay Here',
+        
+        # Additional missing keys
+        'confirm_submit': 'Are You Sure You Want to Submit This ASRS Report?',
+        'jump_to_causal': 'Would You Like to Proceed to Causal Analysis?',
+        'report_submitted_success': '✅ ASRS Report Submitted Successfully!',
+        
+        # AI processing messages
+        'ai_analyzing': '🤖 AI Is Analyzing Your Narrative...',
+        
+        # Additional button texts
+        'generate_causal_diagram': 'Generate Causal Diagram',
+        'generate_executive_report': 'Generate Executive Analysis Report',
+        'conduct_expert_analysis': 'Conduct Comprehensive Expert Analysis',
+        
+        # Placeholder texts
+        'detailed_incident_placeholder': 'Please Describe the Detailed Incident Process, Including Timeline, Factors Involved, Decision Points...',
+        'investigation_placeholder': 'Enter Detailed Incident Description for Professional Investigation...',
+        
+        # System titles and descriptions
+        'asrs_smart_report_system': '🎯 ASRS Smart Report System',
+        'step1_input_narrative': '📝 Step 1: Input Detailed Incident Narrative',
+        'narrative_input_description': 'Please Describe the Complete UAV Incident Process in Detail. AI Will Automatically Extract Key Information and Intelligently Fill Out the Report Form.',
+        'detailed_incident_narrative_label': 'Detailed Incident Narrative*',
+        'basic_info_required': '### 📋 Basic Information (Required)',
+        
+        # Additional UI labels
+        'extraction_details': 'Extraction Details',
+        'value': 'Value',
+        'ai_synopsis': 'AI Synopsis',
+        
+        # Missing keys with proper capitalization
+        'missing_key_info': 'Missing Key Information',
+        'data_complete_good': 'Data Completeness: Good',
+        'ai_suggested_questions': 'AI Suggested Questions',
+        'next_step': 'Next Step',
+        'answer_question': 'Answer Question',
+        'report_details': 'Report Details'
     }
 }
 

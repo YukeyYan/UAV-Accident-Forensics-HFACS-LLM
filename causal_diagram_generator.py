@@ -65,7 +65,7 @@ class CausalDiagramGenerator:
             api_key: OpenAI API key
             model: Model to use (gpt-4o or gpt-4o-mini)
         """
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.model = model
         self.use_mock = not bool(self.api_key)
         
@@ -756,10 +756,10 @@ Identify specific, actionable intervention points that could break the causal ch
                 
                 fig.add_annotation(
                     x=mid_x, y=mid_y,
-                    text=f"<b>{rel_type_label}</b><br>({rel.strength:.1f})",
+                    text=f"<b>{rel_type_label[:15]}...</b><br>({rel.strength:.1f})" if len(rel_type_label) > 15 else f"<b>{rel_type_label}</b><br>({rel.strength:.1f})",
                     showarrow=False,
-                    font=dict(size=12, color=line_color, family="Arial Black"),
-                    bgcolor="white",
+                    font=dict(size=10, color=line_color, family="Arial Bold"),
+                    bgcolor="rgba(255,255,255,0.9)",
                     bordercolor=line_color,
                     borderwidth=1,
                     xref='x', yref='y'
@@ -795,9 +795,9 @@ Identify specific, actionable intervention points that could break the causal ch
                         line=dict(width=2, color='white'),
                         opacity=0.8
                     ),
-                    text=node.name,
+                    text=node.name if len(node.name) <= 25 else node.name[:22] + "...",
                     textposition="bottom center",
-                    textfont=dict(size=14, color='#2c3e50', family="Arial Black"),
+                    textfont=dict(size=12, color='#2c3e50', family="Arial Bold"),
                     name=node.type,
                     showlegend=False,
                     hovertemplate=(
@@ -847,10 +847,10 @@ Identify specific, actionable intervention points that could break the causal ch
         
         fig.update_layout(
             title={
-                'text': f"🔗 Professional Incident Causal Analysis Diagram<br><sub>{diagram.central_event}</sub>",
+                'text': f"<b style='font-size: 28px; color: #2c3e50;'>🔗 Interactive Causal Network Visualization</b><br><span style='font-size: 20px; color: #7f8c8d;'>{diagram.central_event}</span>",
                 'x': 0.5,
                 'xanchor': 'center',
-                'font': {'size': 16, 'color': '#2c3e50'}
+                'font': {'size': 24, 'color': '#2c3e50', 'family': 'Arial Black'}
             },
             xaxis=dict(
                 showgrid=False, 
@@ -864,7 +864,8 @@ Identify specific, actionable intervention points that could break the causal ch
                 showticklabels=False,
                 range=[-0.5, 4.5]
             ),
-            height=700,
+            height=800,
+            width=1200,
             showlegend=True,
             legend=dict(
                 orientation="v",
@@ -872,8 +873,10 @@ Identify specific, actionable intervention points that could break the causal ch
                 y=1,
                 xanchor="left", 
                 x=1.01,
-                title="Node Type"
+                title="Node Type",
+                font=dict(size=12)
             ),
+            margin=dict(t=120, b=80, l=120, r=200),
             plot_bgcolor='white',
             paper_bgcolor='#f8f9fa'
         )

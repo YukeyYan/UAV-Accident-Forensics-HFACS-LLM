@@ -4,6 +4,15 @@ Core Features: Smart Forms + LLM Expert Analysis + HFACS Classification + Causal
 """
 
 import streamlit as st
+
+# Page configuration MUST be first
+st.set_page_config(
+    page_title="ASRS UAV Incident Intelligence Analysis System",
+    page_icon="🚁",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -13,8 +22,9 @@ import sqlite3
 from typing import Dict, List, Optional
 import os
 
-# Set OpenAI API key
-os.environ['OPENAI_API_KEY'] = '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'
+# Set OpenAI API key from environment or config - will be handled in UI now
+api_key_configured = False
+selected_model = 'gpt-4o-mini'
 
 # Import core modules
 from data_processor import ASRSDataProcessor
@@ -36,16 +46,6 @@ except ImportError:
     CAUSAL_DIAGRAM_AVAILABLE = False
     # English-only system initialization
     st.session_state.selected_language = 'en'
-    
-    st.sidebar.warning("⚠️ Enhanced modules not found, using basic functionality")
-
-# Page configuration - English only
-st.set_page_config(
-    page_title="ASRS UAV Incident Intelligence Analysis System",
-    page_icon="🚁",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # 自定义CSS - 增强版美观样式
 st.markdown("""
@@ -54,7 +54,7 @@ st.markdown("""
     .main-header {
         font-size: 2.8rem;
         font-weight: 700;
-        color: white;
+        color: black;
         text-align: center;
         margin-bottom: 2rem;
         padding: 1rem 0;
@@ -367,14 +367,59 @@ class ASRSApp:
             model = st.session_state.get('selected_model', 'gpt-4o-mini')
             st.session_state.causal_generator = CausalDiagramGenerator(model=model)
         
-        # 初始化智能表单助手
-        if st.session_state.form_assistant is None:
+        # 初始化智能表单助手 (仅在API密钥配置后)
+        if st.session_state.form_assistant is None and os.getenv('OPENAI_API_KEY'):
             model = st.session_state.get('selected_model', 'gpt-4o-mini')
             st.session_state.form_assistant = SmartFormAssistant(model=model)
         
         # 初始化专业调查引擎
         if 'investigation_engine' not in st.session_state:
             st.session_state.investigation_engine = None
+    
+    def _test_openai_connection(self, api_key: str, model: str) -> dict:
+        """测试OpenAI API连接"""
+        try:
+            import openai
+            
+            # 设置临时API密钥
+            client = openai.OpenAI(api_key=api_key)
+            
+            # 进行简单的API调用测试
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": "Hello"}],
+                max_tokens=5,
+                temperature=0
+            )
+            
+            return {
+                'success': True,
+                'model': model,
+                'response': response.choices[0].message.content
+            }
+            
+        except ImportError:
+            return {
+                'success': False,
+                'error': 'OpenAI package not installed. Please run: pip install openai'
+            }
+        except Exception as e:
+            error_msg = str(e)
+            if "API key" in error_msg.lower() or "invalid" in error_msg.lower() or "authentication" in error_msg.lower():
+                error_msg = "Invalid API key"
+            elif "model" in error_msg.lower() or "not found" in error_msg.lower():
+                error_msg = f"Model '{model}' not available"
+            elif "quota" in error_msg.lower() or "billing" in error_msg.lower():
+                error_msg = "API quota exceeded or billing issue"
+            elif "rate" in error_msg.lower():
+                error_msg = "Rate limit exceeded"
+            elif "connection" in error_msg.lower() or "network" in error_msg.lower():
+                error_msg = "Network connection error"
+            
+            return {
+                'success': False,
+                'error': error_msg
+            }
     
     def run(self):
         """运行主应用"""
@@ -386,12 +431,64 @@ class ASRSApp:
             lang = st.session_state.selected_language
             st.header(get_text("system_config", lang))
             
+            # OpenAI API配置
+            st.subheader("🤖 OpenAI Configuration")
+            
+            # 初始化API配置状态
+            if 'api_key_configured' not in st.session_state:
+                st.session_state.api_key_configured = bool(os.getenv('OPENAI_API_KEY'))
+            if 'connection_status' not in st.session_state:
+                st.session_state.connection_status = None
+                
+            # API密钥输入
+            api_key = st.text_input(
+                "OpenAI API Key",
+                type="password",
+                value=os.getenv('OPENAI_API_KEY', ''),
+                help="Enter your OpenAI API key"
+            )
+            
             # 模型选择
             selected_model = st.selectbox(
                 get_text("select_ai_model", lang),
-                ["gpt-4o-mini", "gpt-4o"],
+                ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "gpt-4"],
                 help=get_text("model_help", lang)
             )
+            
+            # 连接测试按钮
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔗 Test Connection", help="Test OpenAI API connection"):
+                    if api_key.strip():
+                        st.session_state.connection_status = self._test_openai_connection(api_key.strip(), selected_model)
+                        if st.session_state.connection_status['success']:
+                            os.environ['OPENAI_API_KEY'] = api_key.strip()
+                            st.session_state.api_key_configured = True
+                    else:
+                        st.session_state.connection_status = {'success': False, 'error': 'API key is required'}
+            
+            with col2:
+                if st.button("💾 Save Config", help="Save API configuration"):
+                    if api_key.strip() and st.session_state.get('connection_status', {}).get('success'):
+                        os.environ['OPENAI_API_KEY'] = api_key.strip()
+                        st.session_state.api_key_configured = True
+                        st.success("✅ Configuration saved!")
+                    else:
+                        st.error("❌ Please test connection first")
+            
+            # 显示连接状态
+            if st.session_state.connection_status:
+                if st.session_state.connection_status['success']:
+                    st.success(f"✅ Connected successfully!")
+                    st.info(f"Model: {st.session_state.connection_status.get('model', selected_model)}")
+                else:
+                    st.error(f"❌ Connection failed: {st.session_state.connection_status['error']}")
+            
+            # API状态显示
+            if st.session_state.api_key_configured:
+                st.markdown('<span style="color: #28a745;">🟢 API Ready</span>', unsafe_allow_html=True)
+            else:
+                st.markdown('<span style="color: #dc3545;">🔴 API Not Configured</span>', unsafe_allow_html=True)
             
             # 保存模型选择到会话状态
             if 'selected_model' not in st.session_state or st.session_state.selected_model != selected_model:
@@ -458,9 +555,9 @@ class ASRSApp:
         """检查数据加载状态"""
         lang = st.session_state.selected_language
         if st.session_state.get('data_loaded', False):
-            st.sidebar.success(get_text("data_loaded", lang))
+            st.sidebar.markdown(get_text("data_loaded", lang), unsafe_allow_html=True)
         else:
-            st.sidebar.warning(get_text("data_not_loaded", lang))
+            st.sidebar.markdown(get_text("data_not_loaded", lang), unsafe_allow_html=True)
     
     def _show_overview(self):
         """显示系统概览页面"""
@@ -498,19 +595,19 @@ class ASRSApp:
         
         with col1:
             status = get_text("available", lang) if ENHANCED_FEATURES_AVAILABLE else get_text("unavailable", lang)
-            st.metric(get_text("enhanced_features", lang), status)
+            st.markdown(f"**{get_text('enhanced_features', lang)}**<br>{status}", unsafe_allow_html=True)
         
         with col2:
             status = get_text("available", lang) if CAUSAL_DIAGRAM_AVAILABLE else get_text("unavailable", lang)
-            st.metric(get_text("causal_diagram", lang), status)
+            st.markdown(f"**{get_text('causal_diagram', lang)}**<br>{status}", unsafe_allow_html=True)
         
         with col3:
             status = get_text("loaded", lang) if st.session_state.data_loaded else get_text("not_loaded", lang)
-            st.metric(get_text("historical_data", lang), status)
+            st.markdown(f"**{get_text('historical_data', lang)}**<br>{status}", unsafe_allow_html=True)
         
         with col4:
-            api_status = get_text("configured", lang) if st.session_state.get('form_assistant') and hasattr(st.session_state.form_assistant, 'api_key') and st.session_state.form_assistant.api_key else get_text("not_configured", lang)
-            st.metric(get_text("api_status", lang), api_status)
+            api_status = get_text("configured", lang) if st.session_state.get('api_key_configured', False) else get_text("not_configured", lang)
+            st.markdown(f"**{get_text('api_status', lang)}**<br>{api_status}", unsafe_allow_html=True)
     
     def _show_data_management(self):
         """数据管理页面"""
@@ -547,7 +644,7 @@ class ASRSApp:
         """ASRS智能报告页面 - 真正的AI智能化系统"""
         lang = st.session_state.selected_language
         
-        title_text = "🎯 ASRS Smart Report System" if lang == 'en' else "🎯 ASRS智能报告系统"
+        title_text = get_text('asrs_smart_report_system', lang)
         st.markdown(f'<h2 class="sub-header">{title_text}</h2>', unsafe_allow_html=True)
         
         if lang == 'en':
@@ -607,16 +704,15 @@ class ASRSApp:
         """第一阶段：叙述输入"""
         lang = st.session_state.selected_language
         
-        step_title = "📝 Step 1: Input Detailed Incident Narrative" if lang == 'en' else "📝 第一步：输入事故详细叙述"
+        step_title = get_text('step1_input_narrative', lang)
         st.subheader(step_title)
         
-        description = ("Please describe the complete UAV incident process in detail. AI will automatically extract key information and intelligently fill out the report form." 
-                      if lang == 'en' else "请详细描述无人机事故的完整过程，AI将自动从中提取关键信息并智能填写报告表单。")
+        description = get_text('narrative_input_description', lang)
         st.markdown(description)
         
         # 叙述输入区域
         with st.form("narrative_form"):
-            narrative_label = "Detailed Incident Narrative*" if lang == 'en' else "事故详细叙述*"
+            narrative_label = get_text('detailed_incident_narrative_label', lang)
             
             if lang == 'en':
                 placeholder_text = """Please describe the incident process in detail, including:
@@ -647,7 +743,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             )
             
             # 基本必填信息
-            basic_info_title = "### 📋 Basic Information (Required)" if lang == 'en' else "### 📋 基本信息（必填）"
+            basic_info_title = get_text('basic_info_required', lang)
             st.markdown(basic_info_title)
             col1, col2, col3 = st.columns(3)
             
@@ -709,6 +805,13 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 # 已经提取过，显示结果
                 self._display_extracted_data()
         else:
+            # 检查API是否已配置
+            if not st.session_state.get('api_key_configured', False) or not st.session_state.form_assistant:
+                st.error("❌ OpenAI API not configured. Please configure your API key in the sidebar first.")
+                if st.button("🔧 Go to API Configuration"):
+                    st.rerun()
+                return
+                
             # 开始AI提取
             with st.spinner(get_text('ai_analyzing', lang)):
                 try:
@@ -1173,7 +1276,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             
             col_confirm1, col_confirm2 = st.columns(2)
             with col_confirm1:
-                if st.button("✅ " + ("Confirm" if lang == 'en' else "确认"), key="confirm_submit_btn", type="primary"):
+                if st.button("✅ " + get_text('confirm', lang), key="confirm_submit_btn", type="primary"):
                     # 执行实际提交
                     report_id = f"ASRS_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
                     
@@ -1207,7 +1310,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                     st.rerun()
                     
             with col_confirm2:
-                if st.button("❌ " + ("Cancel" if lang == 'en' else "取消"), key="cancel_submit_btn"):
+                if st.button("❌ " + get_text('cancel', lang), key="cancel_submit_btn"):
                     st.session_state.show_submit_confirmation = False
                     st.rerun()
         
@@ -1219,13 +1322,13 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             
             col_causal1, col_causal2 = st.columns(2)
             with col_causal1:
-                if st.button("✅ " + ("Yes, Go to Causal Analysis" if lang == 'en' else "是的，前往因果分析"), key="goto_causal_btn", type="primary"):
+                if st.button("✅ " + get_text('yes_go_causal_analysis', lang), key="goto_causal_btn", type="primary"):
                     st.session_state.show_causal_confirmation = False
                     st.session_state.page_redirect = "causal_analysis"
                     st.rerun()
                     
             with col_causal2:
-                if st.button("❌ " + ("No, Stay Here" if lang == 'en' else "不，留在这里"), key="stay_here_btn"):
+                if st.button("❌ " + get_text('no_stay_here', lang), key="stay_here_btn"):
                     st.session_state.show_causal_confirmation = False
                     st.rerun()
         
@@ -1283,10 +1386,10 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             quick_narrative = st.text_area(
                 "Enter incident narrative for causal analysis" if lang == 'en' else "输入事故叙述进行因果关系分析", 
                 height=150,
-                placeholder="Please describe the detailed incident process, including timeline, factors involved, decision points..." if lang == 'en' else "请描述事故的详细过程，包括时间序列、涉及因素、决策点等..."
+                placeholder=get_text('detailed_incident_placeholder', lang)
             )
             
-            if st.button("🚀 " + ("Generate Causal Diagram" if lang == 'en' else "生成因果关系图"), type="primary") and quick_narrative.strip():
+            if st.button("🚀 " + get_text('generate_causal_diagram', lang), type="primary") and quick_narrative.strip():
                 current_report = {
                     'detailed_narrative': quick_narrative,
                     'narrative': quick_narrative,
@@ -1358,6 +1461,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
 
     def _display_causal_diagram_results(self, causal_diagram):
         """Display professional causal analysis results in English with clean formatting"""
+        lang = st.session_state.selected_language
         st.markdown("---")
         
         # Professional header with clear styling
@@ -1741,7 +1845,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             st.markdown("---")
             
             # Generate professional report
-            if st.button("📄 **Generate Executive Analysis Report**", type="primary"):
+            if st.button("📄 **" + get_text('generate_executive_report', lang) + "**", type="primary"):
                 try:
                     from datetime import datetime
                     
@@ -1896,7 +2000,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             
             # 提供快速输入选项
             st.subheader("📝 " + ("Quick Analysis Input" if lang == 'en' else "快速分析输入"))
-            placeholder_text = "Enter detailed incident description for professional investigation..." if lang == 'en' else "输入详细事故描述进行专业调查..."
+            placeholder_text = get_text('investigation_placeholder', lang)
             
             quick_narrative = st.text_area(
                 "Incident Description" if lang == 'en' else "事故描述",
@@ -2282,6 +2386,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
 
     def _show_llm_expert_analysis(self):
         """Professional LLM Expert Analysis with comprehensive information integration"""
+        lang = st.session_state.selected_language
         
         # Professional header styling
         st.markdown("""
@@ -2325,7 +2430,12 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         
         st.markdown("---")
         
-        if st.button("🚀 **Conduct Comprehensive Expert Analysis**", type="primary"):
+        if st.button("🚀 **" + get_text('conduct_expert_analysis', lang) + "**", type="primary"):
+            # 检查API是否已配置
+            if not st.session_state.get('api_key_configured', False):
+                st.error("❌ OpenAI API not configured. Please configure your API key in the sidebar first.")
+                return
+                
             with st.spinner("🧠 **GPT-4o Expert System conducting comprehensive multi-dimensional analysis...**"):
                 try:
                     # Initialize AI analyzer if needed
@@ -2684,6 +2794,11 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         
         button_text = "🚀 Start HFACS Analysis" if lang == 'en' else "🚀 开始HFACS分析"
         if st.button(button_text, type="primary"):
+            # 检查API是否已配置
+            if not st.session_state.get('api_key_configured', False):
+                st.error("❌ OpenAI API not configured. Please configure your API key in the sidebar first.")
+                return
+                
             spinner_text = "📋 Conducting HFACS 8.0 human factors analysis..." if lang == 'en' else "📋 正在进行HFACS 8.0人因分析..."
             with st.spinner(spinner_text):
                 try:
@@ -2753,7 +2868,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 st.info(tree_desc)
                 
                 try:
-                    # 创建树状图
+                    # 创建HFACS可视化
                     if st.session_state.hfacs_analyzer:
                         # 显示分析结果摘要
                         if hasattr(hfacs_result, 'classifications') and hfacs_result.classifications:
@@ -2761,8 +2876,22 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                         else:
                             st.warning("No HFACS classifications found to visualize" if lang == 'en' else "未找到可视化的HFACS分类")
 
-                        tree_fig = st.session_state.hfacs_analyzer.create_hfacs_tree_visualization(hfacs_result)
-                        st.plotly_chart(tree_fig, use_container_width=True, config={'displayModeBar': True})
+                        # 可视化方式选择
+                        st.subheader("🎨 Visualization Options" if lang == 'en' else "🎨 可视化选项")
+                        viz_option = st.selectbox(
+                            "Choose visualization style:" if lang == 'en' else "选择可视化风格：",
+                            ["🏗️ Hierarchical Pyramid (Recommended)" if lang == 'en' else "🏗️ 层级金字塔（推荐）", 
+                             "🌳 Traditional Tree Structure" if lang == 'en' else "🌳 传统树状结构"],
+                            help="Pyramid view shows HFACS layers in hierarchical order, Tree view shows interconnected structure" if lang == 'en' else "金字塔视图按层级顺序显示HFACS层次，树状视图显示相互关联结构"
+                        )
+                        
+                        # 根据选择生成不同的可视化
+                        if "Pyramid" in viz_option or "金字塔" in viz_option:
+                            viz_fig = st.session_state.hfacs_analyzer.create_hfacs_pyramid_visualization(hfacs_result)
+                        else:
+                            viz_fig = st.session_state.hfacs_analyzer.create_hfacs_tree_visualization(hfacs_result)
+                        
+                        st.plotly_chart(viz_fig, use_container_width=True, config={'displayModeBar': True, 'toImageButtonOptions': {'format': 'png', 'filename': 'hfacs_analysis', 'height': 1000, 'width': 1600}})
                     else:
                         st.warning(get_text('hfacs_not_initialized', lang))
                 except Exception as e:

@@ -92,7 +92,7 @@ class HFACSAnalyzer:
         Args:
             api_key: OpenAI API key
         """
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
 
         if not self.api_key:
             logger.warning("OpenAI API key not set, will use mock analysis")
@@ -537,6 +537,251 @@ Be thorough and objective in your analysis."""
 
         return visualizations
     
+    def create_hfacs_pyramid_visualization(self, result: HFACSAnalysisResult) -> go.Figure:
+        """Create an improved HFACS pyramid visualization with clear layered structure"""
+        
+        # Define the four layers in hierarchical order (top to bottom)
+        layers = {
+            'ORGANIZATIONAL INFLUENCES': {
+                'level': 0,
+                'color': '#8B5CF6',
+                'categories': [
+                    'ORGANIZATIONAL INFLUENCES—Climate/Culture',
+                    'ORGANIZATIONAL INFLUENCES—Policy/Procedures/Process', 
+                    'ORGANIZATIONAL INFLUENCES—Resource Support',
+                    'ORGANIZATIONAL INFLUENCES—Training Program Issues'
+                ]
+            },
+            'SUPERVISION/LEADERSHIP': {
+                'level': 1, 
+                'color': '#3B82F6',
+                'categories': [
+                    'SUPERVISION/LEADERSHIP—Unit Safety Culture',
+                    'SUPERVISION/LEADERSHIP—Supervisory Known Deviations',
+                    'SUPERVISION/LEADERSHIP—Ineffective Supervision',
+                    'SUPERVISION/LEADERSHIP—Ineffective Planning & Coordination'
+                ]
+            },
+            'PRECONDITIONS': {
+                'level': 2,
+                'color': '#F59E0B', 
+                'categories': [
+                    'PRECONDITIONS—Physical Environment',
+                    'PRECONDITIONS—Technological Environment',
+                    'PRECONDITIONS—Team Coordination/Communication',
+                    'PRECONDITIONS—Training Conditions',
+                    'PRECONDITIONS—Mental Awareness (Attention)',
+                    'PRECONDITIONS—State of Mind',
+                    'PRECONDITIONS—Adverse Physiological'
+                ]
+            },
+            'UNSAFE ACTS': {
+                'level': 3,
+                'color': '#EF4444',
+                'categories': [
+                    'UNSAFE ACTS—Errors—Performance/Skill-Based',
+                    'UNSAFE ACTS—Errors—Judgement & Decision-Making', 
+                    'UNSAFE ACTS—Known Deviations'
+                ]
+            }
+        }
+        
+        # Get identified categories
+        identified_categories = set()
+        if result.classifications:
+            identified_categories = {cls.category for cls in result.classifications if cls.confidence > 0.3}
+        
+        fig = go.Figure()
+        
+        # Create layered pyramid visualization
+        for layer_name, layer_info in layers.items():
+            level = layer_info['level']
+            base_color = layer_info['color']
+            
+            # Draw layer background
+            y_center = 3 - level * 0.7  # Spacing between layers
+            layer_width = 8 - level * 1.5  # Pyramid shape - narrower at top
+            
+            # Add layer background rectangle
+            fig.add_shape(
+                type="rect",
+                x0=-layer_width/2, y0=y_center-0.25,
+                x1=layer_width/2, y1=y_center+0.25,
+                fillcolor=f"rgba{tuple(list(int(base_color[i:i+2], 16) for i in (1, 3, 5)) + [0.2])}",
+                line=dict(color=base_color, width=2),
+                layer="below"
+            )
+            
+            # Add layer title
+            fig.add_annotation(
+                x=-layer_width/2 - 1, y=y_center,
+                text=f"<b>{layer_name}</b>",
+                showarrow=False,
+                font=dict(size=16, color=base_color, family="Arial Black"),
+                xanchor="right",
+                yanchor="middle"
+            )
+            
+            # Position categories within the layer
+            categories = layer_info['categories']
+            for i, category in enumerate(categories):
+                if category in HFACS_CATEGORIES:  # Only show valid HFACS categories
+                    # Calculate position within the layer
+                    cat_count = len(categories)
+                    spacing = layer_width / (cat_count + 1)
+                    x_pos = -layer_width/2 + (i + 1) * spacing
+                    
+                    # Determine if this category is identified
+                    is_identified = category in identified_categories
+                    
+                    # Choose visual properties
+                    if is_identified:
+                        marker_color = base_color
+                        marker_size = 20
+                        text_color = '#FFFFFF'
+                        border_color = '#FFFFFF'
+                        border_width = 3
+                        opacity = 1.0
+                    else:
+                        marker_color = '#E5E7EB'
+                        marker_size = 16
+                        text_color = '#6B7280'
+                        border_color = '#D1D5DB'
+                        border_width = 2
+                        opacity = 0.7
+                    
+                    # Simplify category name for display
+                    display_name = category.split('—')[-1] if '—' in category else category
+                    if len(display_name) > 18:
+                        display_name = display_name[:15] + '...'
+                    
+                    # Add category marker
+                    fig.add_trace(go.Scatter(
+                        x=[x_pos], y=[y_center],
+                        mode='markers+text',
+                        marker=dict(
+                            size=marker_size,
+                            color=marker_color,
+                            symbol='circle',
+                            line=dict(color=border_color, width=border_width),
+                            opacity=opacity
+                        ),
+                        text=display_name,
+                        textposition="bottom center",
+                        textfont=dict(size=10, color=text_color, family="Arial Bold"),
+                        name=layer_name,
+                        showlegend=False,
+                        hovertemplate=(
+                            f"<b>{category}</b><br>" + 
+                            (f"<b>Status:</b> Identified<br>" if is_identified else "<b>Status:</b> Not identified<br>") +
+                            (f"<b>Confidence:</b> {next((cls.confidence for cls in result.classifications if cls.category == category), 0):.1%}<br>" if is_identified else "") +
+                            (f"<b>Analysis:</b> {next((cls.reasoning[:100] + '...' if len(cls.reasoning) > 100 else cls.reasoning for cls in result.classifications if cls.category == category), '')}" if is_identified else "") +
+                            "<extra></extra>"
+                        )
+                    ))
+        
+        # Add connecting lines to show hierarchy flow
+        for i in range(3):  # Connect levels 0->1, 1->2, 2->3
+            y_from = 3 - i * 0.7
+            y_to = 3 - (i + 1) * 0.7
+            
+            # Add subtle connecting lines
+            fig.add_shape(
+                type="line",
+                x0=-1, y0=y_from - 0.25,
+                x1=-1, y1=y_to + 0.25,
+                line=dict(color="#9CA3AF", width=2, dash="dot"),
+                opacity=0.5
+            )
+            
+            # Add arrow annotation
+            fig.add_annotation(
+                x=-1, y=(y_from + y_to) / 2,
+                text="⬇",
+                showarrow=False,
+                font=dict(size=16, color="#6B7280"),
+                xanchor="center"
+            )
+        
+        # Add legend for identified vs not identified
+        legend_items = [
+            ('Identified Factors', layers['UNSAFE ACTS']['color']),
+            ('Not Identified', '#E5E7EB')
+        ]
+        
+        for i, (name, color) in enumerate(legend_items):
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None],
+                mode='markers',
+                marker=dict(size=12, color=color, symbol='circle'),
+                name=name,
+                showlegend=True
+            ))
+        
+        # Update layout
+        fig.update_layout(
+            title={
+                'text': '<b style="color: #1F2937; font-size: 32px;">🏗️ HFACS Hierarchical Analysis Framework</b><br>' +
+                       '<span style="color: #6B7280; font-size: 18px;">Four-Layer Human Factors Pyramid • Organizational to Individual Flow</span>',
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 28, 'color': '#1F2937', 'family': 'Arial Black'}
+            },
+            showlegend=True,
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=0.98,
+                xanchor="left", 
+                x=1.02,
+                bgcolor='rgba(255,255,255,0.95)',
+                bordercolor='rgba(107,114,128,0.3)',
+                borderwidth=1,
+                font=dict(size=12, color='#374151', family='Arial')
+            ),
+            xaxis=dict(
+                showgrid=False,
+                showticklabels=False,
+                zeroline=False,
+                range=[-7, 6]
+            ),
+            yaxis=dict(
+                showgrid=False,
+                showticklabels=False,
+                zeroline=False,
+                range=[-0.5, 4]
+            ),
+            plot_bgcolor='#FEFEFE',
+            paper_bgcolor='#FFFFFF',
+            width=1600,
+            height=1000,
+            margin=dict(t=140, b=60, l=200, r=200),
+            font=dict(family='Arial', size=12, color='#374151')
+        )
+        
+        # Add layer level annotations on the right
+        layer_labels = [
+            ("Level 1: Organizational", 3, '#8B5CF6'),
+            ("Level 2: Supervisory", 2.3, '#3B82F6'),
+            ("Level 3: Preconditions", 1.6, '#F59E0B'),
+            ("Level 4: Unsafe Acts", 0.9, '#EF4444')
+        ]
+        
+        for label, y_pos, color in layer_labels:
+            fig.add_annotation(
+                x=5.5, y=y_pos,
+                text=f"<b>{label}</b>",
+                showarrow=False,
+                font=dict(size=14, color=color, family="Arial Bold"),
+                xanchor="left",
+                yanchor="middle",
+                bgcolor="rgba(255,255,255,0.8)",
+                bordercolor=color,
+                borderwidth=1
+            )
+        
+        return fig
+
     def create_hfacs_tree_visualization(self, result: HFACSAnalysisResult) -> go.Figure:
         """Create professional HFACS Four-Layer 18-Category Tree Visualization with enhanced layout"""
         
@@ -555,34 +800,34 @@ Be thorough and objective in your analysis."""
             'HFACS Framework': (0, 5),
             
             # Layer 1 - UNSAFE ACTS (spread wider for better readability)
-            'UNSAFE ACTS': (-4.5, 4),
-            'UNSAFE ACTS—Errors—Performance/Skill-Based': (-6, 3),
-            'UNSAFE ACTS—Errors—Judgement & Decision-Making': (-4.5, 3),
-            'UNSAFE ACTS—Known Deviations': (-3, 3),
+            'UNSAFE ACTS': (-5, 4),
+            'UNSAFE ACTS—Errors—Performance/Skill-Based': (-6.5, 3),
+            'UNSAFE ACTS—Errors—Judgement & Decision-Making': (-5, 3),
+            'UNSAFE ACTS—Known Deviations': (-3.5, 3),
             
             # Layer 2 - PRECONDITIONS (better vertical spacing)
             'PRECONDITIONS': (-1.5, 4),
-            'PRECONDITIONS—Physical Environment': (-3, 2.5),
-            'PRECONDITIONS—Technological Environment': (-2, 2.5),
-            'PRECONDITIONS—Team Coordination/Communication': (-1, 2.5),
-            'PRECONDITIONS—Training Conditions': (-0, 2.5),
-            'PRECONDITIONS—Mental Awareness (Attention)': (-2.5, 1.5),
-            'PRECONDITIONS—State of Mind': (-1.5, 1.5),
-            'PRECONDITIONS—Adverse Physiological': (-0.5, 1.5),
+            'PRECONDITIONS—Physical Environment': (-3.2, 2.8),
+            'PRECONDITIONS—Technological Environment': (-2.2, 2.8),
+            'PRECONDITIONS—Team Coordination/Communication': (-1.2, 2.8),
+            'PRECONDITIONS—Training Conditions': (-0.2, 2.8),
+            'PRECONDITIONS—Mental Awareness (Attention)': (-2.8, 1.8),
+            'PRECONDITIONS—State of Mind': (-1.8, 1.8),
+            'PRECONDITIONS—Adverse Physiological': (-0.8, 1.8),
             
             # Layer 3 - SUPERVISION/LEADERSHIP (improved spacing)
-            'SUPERVISION/LEADERSHIP': (1.5, 4),
-            'SUPERVISION/LEADERSHIP—Unit Safety Culture': (0.5, 2.5),
-            'SUPERVISION/LEADERSHIP—Supervisory Known Deviations': (1.5, 2.5),
-            'SUPERVISION/LEADERSHIP—Ineffective Supervision': (2.5, 2.5),
-            'SUPERVISION/LEADERSHIP—Ineffective Planning & Coordination': (1.5, 1.5),
+            'SUPERVISION/LEADERSHIP': (1.8, 4),
+            'SUPERVISION/LEADERSHIP—Unit Safety Culture': (0.8, 2.8),
+            'SUPERVISION/LEADERSHIP—Supervisory Known Deviations': (1.8, 2.8),
+            'SUPERVISION/LEADERSHIP—Ineffective Supervision': (2.8, 2.8),
+            'SUPERVISION/LEADERSHIP—Ineffective Planning & Coordination': (1.8, 1.8),
             
             # Layer 4 - ORGANIZATIONAL INFLUENCES (better distribution)
-            'ORGANIZATIONAL INFLUENCES': (4.5, 4),
-            'ORGANIZATIONAL INFLUENCES—Climate/Culture': (3.5, 2.5),
-            'ORGANIZATIONAL INFLUENCES—Policy/Procedures/Process': (4.5, 2.5),
-            'ORGANIZATIONAL INFLUENCES—Resource Support': (5.5, 2.5),
-            'ORGANIZATIONAL INFLUENCES—Training Program Issues': (4.5, 1.5),
+            'ORGANIZATIONAL INFLUENCES': (5, 4),
+            'ORGANIZATIONAL INFLUENCES—Climate/Culture': (4, 2.8),
+            'ORGANIZATIONAL INFLUENCES—Policy/Procedures/Process': (5, 2.8),
+            'ORGANIZATIONAL INFLUENCES—Resource Support': (6, 2.8),
+            'ORGANIZATIONAL INFLUENCES—Training Program Issues': (5, 1.8),
         }
         
         # 创建图形对象
@@ -704,15 +949,19 @@ Be thorough and objective in your analysis."""
                 if len(parts) > 1:
                     category_part = parts[-1]
                     # Break long text into multiple lines if needed
-                    if len(category_part) > 20:
+                    if len(category_part) > 18:
                         words = category_part.split(' ')
                         if len(words) > 2:
                             mid = len(words) // 2
                             display_text = ' '.join(words[:mid]) + '<br>' + ' '.join(words[mid:])
                         else:
-                            display_text = category_part
+                            # If very long single words, truncate with ellipsis
+                            display_text = category_part[:15] + '...' if len(category_part) > 18 else category_part
                     else:
                         display_text = category_part
+            elif len(node) > 18 and node not in ['UNSAFE ACTS', 'PRECONDITIONS', 'SUPERVISION/LEADERSHIP', 'ORGANIZATIONAL INFLUENCES']:
+                # Handle other long node names
+                display_text = node[:15] + '...'
             
             # Determine appropriate font size for readability
             if node == 'HFACS Framework':
@@ -769,41 +1018,41 @@ Be thorough and objective in your analysis."""
         # Enhanced professional layout settings
         fig.update_layout(
             title={
-                'text': '<b style="color: #2D3748; font-size: 26px;">HFACS 8.0 Professional Framework Analysis</b><br>' +
-                       '<span style="color: #718096; font-size: 18px;">Four-Layer Human Factors Classification • UAV Incident Assessment</span>',
+                'text': '<b style="color: #2D3748; font-size: 30px;">🌳 HFACS Four-Layer 18-Category Tree Visualization</b><br>' +
+                       '<span style="color: #718096; font-size: 20px;">Professional Human Factors Analysis Framework • UAV Incident Assessment</span>',
                 'x': 0.5,
                 'xanchor': 'center',
-                'font': {'size': 24, 'color': '#2D3748', 'family': 'Arial Black'}
+                'font': {'size': 26, 'color': '#2D3748', 'family': 'Arial Black'}
             },
             showlegend=True,
             legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.08,
-                xanchor="center",
-                x=0.5,
-                bgcolor='rgba(255,255,255,0.98)',
+                orientation="v",
+                yanchor="top",
+                y=0.98,
+                xanchor="left",
+                x=1.02,
+                bgcolor='rgba(255,255,255,0.95)',
                 bordercolor='rgba(113,128,150,0.4)',
-                borderwidth=3,
-                font=dict(size=14, color='#2D3748', family='Arial Bold')
+                borderwidth=2,
+                font=dict(size=12, color='#2D3748', family='Arial Bold')
             ),
             xaxis=dict(
                 showgrid=False,
                 showticklabels=False,
                 zeroline=False,
-                range=[-7, 6.5]  # Expanded range for better spacing
+                range=[-8, 7.5]  # Further expanded range for better spacing
             ),
             yaxis=dict(
                 showgrid=False,
                 showticklabels=False,
                 zeroline=False,
-                range=[0.5, 5.5]  # Adjusted for better vertical spacing
+                range=[1, 5.5]  # Adjusted for better vertical spacing
             ),
             plot_bgcolor='rgba(249,250,251,1)',  # Professional light background
             paper_bgcolor='#FFFFFF',
-            width=1600,  # Increased width for better readability
-            height=1000,  # Increased height for better spacing
-            margin=dict(t=140, b=80, l=100, r=100),  # Enhanced margins
+            width=1800,  # Further increased width for better readability
+            height=1200,  # Further increased height for better spacing
+            margin=dict(t=160, b=100, l=150, r=150),  # Enhanced margins
             font=dict(family='Arial', size=14, color='#2D3748')  # Larger base font
         )
         

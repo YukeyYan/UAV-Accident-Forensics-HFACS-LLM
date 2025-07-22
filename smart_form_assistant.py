@@ -47,7 +47,7 @@ class SmartFormAssistant:
             api_key: OpenAI API密钥
             model: 使用的模型 (gpt-4o 或 gpt-4o-mini)
         """
-        self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
+        self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.model = model
         
         if not self.api_key:
