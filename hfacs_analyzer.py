@@ -1,7 +1,7 @@
 """
-HFACS 8.0 人因分析模块
-基于Human Factors Analysis and Classification System 8.0框架进行事故分析
-参考GT_Run_Auto.py的专业实现
+HFACS 8.0 Human Factors Analysis Module
+Incident analysis based on Human Factors Analysis and Classification System 8.0 framework
+Professional implementation referencing GT_Run_Auto.py
 """
 
 import requests
@@ -17,12 +17,13 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 import pandas as pd
 import networkx as nx
+from translations import get_text
 
-# 配置日志
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 18个HFACS 8.0分类定义（来自GT_Run_Auto.py）
+# 18 HFACS 8.0 category definitions (from GT_Run_Auto.py)
 HFACS_CATEGORIES = [
     "UNSAFE ACTS—Errors—Performance/Skill-Based",
     "UNSAFE ACTS—Errors—Judgement & Decision-Making",
@@ -44,7 +45,7 @@ HFACS_CATEGORIES = [
     "ORGANIZATIONAL INFLUENCES—Training Program Issues"
 ]
 
-# HFACS四个层级
+# HFACS four layers
 HFACS_LAYERS = [
     "UNSAFE ACTS",
     "PRECONDITIONS",
@@ -52,7 +53,7 @@ HFACS_LAYERS = [
     "ORGANIZATIONAL INFLUENCES"
 ]
 
-# 类别到层级的映射
+# Category to layer mapping
 CATEGORY_TO_LAYER = {}
 for category in HFACS_CATEGORIES:
     for layer in HFACS_LAYERS:
@@ -62,7 +63,7 @@ for category in HFACS_CATEGORIES:
 
 @dataclass
 class HFACSClassification:
-    """HFACS分类结果"""
+    """HFACS Classification Result"""
     category: str
     layer: str
     confidence: float
@@ -71,7 +72,7 @@ class HFACSClassification:
 
 @dataclass
 class HFACSAnalysisResult:
-    """HFACS分析结果"""
+    """HFACS Analysis Result"""
     classifications: List[HFACSClassification]
     primary_factors: List[str]
     contributing_factors: List[str]
@@ -82,24 +83,53 @@ class HFACSAnalysisResult:
     visualization_data: Dict
 
 class HFACSAnalyzer:
-    """HFACS 8.0 分析器 - 基于GT_Run_Auto.py的专业实现"""
+    """HFACS 8.0 Analyzer - Professional implementation based on GT_Run_Auto.py"""
 
     def __init__(self, api_key: Optional[str] = None):
         """
-        初始化HFACS分析器
+        Initialize HFACS Analyzer
 
         Args:
-            api_key: OpenAI API密钥
+            api_key: OpenAI API key
         """
         self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
 
         if not self.api_key:
-            logger.warning("未设置OpenAI API密钥，将使用模拟分析")
+            logger.warning("OpenAI API key not set, will use mock analysis")
             self.use_mock = True
         else:
             self.use_mock = False
+    
+    def _is_dark_color(self, hex_color: str) -> bool:
+        """
+        Determine if color is dark
+        Used for intelligent text color selection to ensure readability
+        
+        Args:
+            hex_color: Hexadecimal color code, e.g., '#FF0000'
+            
+        Returns:
+            bool: True for dark color, False for light color
+        """
+        try:
+            # Remove # sign
+            hex_color = hex_color.lstrip('#')
+            
+            # Convert to RGB
+            rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+            
+            # Calculate brightness (using relative luminance formula)
+            # Formula source: https://en.wikipedia.org/wiki/Relative_luminance
+            r, g, b = [x/255.0 for x in rgb]
+            luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+            
+            # Brightness less than 0.5 is considered dark
+            return luminance < 0.5
+        except (ValueError, IndexError):
+            # If color format is incorrect, default to dark
+            return True
 
-        # 系统提示词（基于GT_Run_Auto.py的专业提示词，进一步完善）
+        # System prompt (professional prompt based on GT_Run_Auto.py, further enhanced)
         self.system_prompt = """You are an expert aviation-safety analyst specialised in HFACS (Human Factors Analysis and Classification System) classification.
 
 Your mission is to analyze aviation incident narratives and classify human factors according to the HFACS 8.0 framework.
@@ -153,13 +183,13 @@ Be thorough, objective, and consistent with HFACS 8.0 definitions."""
     
     def analyze_hfacs(self, incident_data: Dict) -> HFACSAnalysisResult:
         """
-        进行HFACS分析
+        Perform HFACS analysis
 
         Args:
-            incident_data: 事故数据
+            incident_data: Incident data
 
         Returns:
-            HFACSAnalysisResult: HFACS分析结果
+            HFACSAnalysisResult: HFACS analysis result
         """
         try:
             if self.use_mock:
@@ -167,11 +197,11 @@ Be thorough, objective, and consistent with HFACS 8.0 definitions."""
             else:
                 return self._openai_hfacs_analysis(incident_data)
         except Exception as e:
-            logger.error(f"HFACS分析失败: {e}")
+            logger.error(f"HFACS analysis failed: {e}")
             return self._fallback_hfacs_analysis(incident_data)
 
     def _create_hfacs_function_schema(self):
-        """创建HFACS分析的Function Schema"""
+        """Create HFACS analysis Function Schema"""
         return {
             "name": "analyze_hfacs_factors",
             "description": "Analyze incident narrative using HFACS 8.0 framework",
@@ -243,7 +273,7 @@ Be thorough, objective, and consistent with HFACS 8.0 definitions."""
         }
     
     def _openai_hfacs_analysis(self, incident_data: Dict) -> HFACSAnalysisResult:
-        """使用OpenAI进行HFACS分析"""
+        """HFACS analysis using OpenAI"""
 
         analysis_prompt = self._build_hfacs_prompt(incident_data)
 
@@ -266,6 +296,7 @@ Be thorough, objective, and consistent with HFACS 8.0 definitions."""
                 "max_tokens": 3000
             }
 
+            logger.info(f"Sending HFACS analysis request to OpenAI...")
             response = requests.post(url, headers=headers, json=data, timeout=30)
 
             if response.status_code == 200:
@@ -274,33 +305,54 @@ Be thorough, objective, and consistent with HFACS 8.0 definitions."""
 
                 if 'function_call' in message:
                     function_result = json.loads(message['function_call']['arguments'])
-                    return self._parse_function_response(function_result, incident_data)
+                    parsed_result = self._parse_function_response(function_result, incident_data)
+                    logger.info(f"HFACS analysis completed. Found {len(parsed_result.classifications)} classifications")
+                    return parsed_result
                 else:
-                    # 如果没有function call，尝试解析普通响应
+                    # If no function call, try to parse normal response
                     analysis_text = message['content']
+                    logger.warning("No function call in response, parsing text response")
                     return self._parse_hfacs_response(analysis_text, incident_data)
             else:
-                logger.error(f"OpenAI HFACS分析失败: {response.status_code}")
+                logger.error(f"OpenAI HFACS analysis failed: {response.status_code} - {response.text}")
                 return self._fallback_hfacs_analysis(incident_data)
 
         except Exception as e:
-            logger.error(f"OpenAI HFACS分析失败: {e}")
+            logger.error(f"OpenAI HFACS analysis failed: {e}")
             return self._fallback_hfacs_analysis(incident_data)
 
     def _parse_function_response(self, result: Dict, incident_data: Dict) -> HFACSAnalysisResult:
-        """解析Function Call响应"""
+        """Parse Function Call response"""
 
         classifications = []
         for item in result.get("classifications", []):
-            classifications.append(HFACSClassification(
-                category=item.get("category", ""),
-                layer=item.get("layer", ""),
-                confidence=item.get("confidence", 0.0),
-                reasoning=item.get("reasoning", ""),
-                evidence=item.get("evidence", [])
-            ))
+            # Validate category against known HFACS categories
+            category = item.get("category", "")
+            layer = item.get("layer", "")
 
-        # 生成可视化数据
+            # Ensure category is in our known list
+            if category in HFACS_CATEGORIES:
+                # Ensure layer matches category
+                expected_layer = CATEGORY_TO_LAYER.get(category, layer)
+                if layer != expected_layer:
+                    logger.warning(f"Layer mismatch for {category}: got {layer}, expected {expected_layer}")
+                    layer = expected_layer
+
+                classifications.append(HFACSClassification(
+                    category=category,
+                    layer=layer,
+                    confidence=item.get("confidence", 0.0),
+                    reasoning=item.get("reasoning", ""),
+                    evidence=item.get("evidence", [])
+                ))
+            else:
+                logger.warning(f"Unknown HFACS category: {category}")
+
+        logger.info(f"Parsed {len(classifications)} valid HFACS classifications")
+        for cls in classifications:
+            logger.info(f"  - {cls.category} (confidence: {cls.confidence:.2f})")
+
+        # Generate visualization data
         visualization_data = self._generate_visualization_data(classifications)
 
         return HFACSAnalysisResult(
@@ -315,7 +367,7 @@ Be thorough, objective, and consistent with HFACS 8.0 definitions."""
         )
     
     def _build_hfacs_prompt(self, incident_data: Dict) -> str:
-        """构建HFACS分析提示词"""
+        """Build HFACS analysis prompt"""
 
         prompt = f"""Analyze the following UAV incident using the HFACS 8.0 framework:
 
@@ -358,9 +410,9 @@ Be thorough and objective in your analysis."""
         return prompt
 
     def _generate_visualization_data(self, classifications: List[HFACSClassification]) -> Dict:
-        """生成可视化数据"""
+        """Generate visualization data"""
 
-        # 按层级统计
+        # Statistics by layer
         layer_counts = {}
         layer_confidence = {}
 
@@ -371,12 +423,12 @@ Be thorough and objective in your analysis."""
                 layer_confidence[layer] = []
             layer_confidence[layer].append(classification.confidence)
 
-        # 计算平均置信度
+        # Calculate average confidence
         layer_avg_confidence = {}
         for layer, confidences in layer_confidence.items():
             layer_avg_confidence[layer] = sum(confidences) / len(confidences)
 
-        # 按类别统计
+        # Statistics by category
         category_data = []
         for classification in classifications:
             category_data.append({
@@ -394,14 +446,17 @@ Be thorough and objective in your analysis."""
         }
 
     def create_hfacs_visualizations(self, result: HFACSAnalysisResult) -> Dict:
-        """创建HFACS可视化图表"""
+        """Create HFACS visualization charts"""
 
         visualizations = {}
 
         if not result.classifications:
+            logger.warning("No classifications found for visualization")
             return visualizations
 
-        # 1. 层级分布饼图
+        logger.info(f"Creating visualizations for {len(result.classifications)} classifications")
+
+        # 1. Layer distribution pie chart
         layer_counts = result.visualization_data.get('layer_counts', {})
         if layer_counts:
             fig_pie = px.pie(
@@ -412,6 +467,7 @@ Be thorough and objective in your analysis."""
             )
             fig_pie.update_traces(textposition='inside', textinfo='percent+label')
             visualizations['layer_pie'] = fig_pie
+            logger.info(f"Created layer distribution pie chart with {len(layer_counts)} layers")
 
         # 2. 层级置信度条形图
         layer_confidence = result.visualization_data.get('layer_avg_confidence', {})
@@ -482,51 +538,51 @@ Be thorough and objective in your analysis."""
         return visualizations
     
     def create_hfacs_tree_visualization(self, result: HFACSAnalysisResult) -> go.Figure:
-        """创建HFACS四层18类树状图可视化"""
+        """Create professional HFACS Four-Layer 18-Category Tree Visualization with enhanced layout"""
         
-        # 定义层级颜色 - 专业级配色方案
+        # Professional color scheme for enhanced readability
         layer_colors = {
-            'HFACS Framework': '#1A365D',          # 深海军蓝 - 根节点
-            'UNSAFE ACTS': '#C53030',              # 深红色 - 不安全行为
-            'PRECONDITIONS': '#D69E2E',            # 金橙色 - 前提条件  
-            'SUPERVISION/LEADERSHIP': '#2B6CB0',   # 深蓝色 - 监督领导
-            'ORGANIZATIONAL INFLUENCES': '#805AD5' # 深紫色 - 组织影响
+            'HFACS Framework': '#1A365D',          # Deep navy - Root node
+            'UNSAFE ACTS': '#E53E3E',              # Bright red - Unsafe acts
+            'PRECONDITIONS': '#D69E2E',            # Golden orange - Preconditions  
+            'SUPERVISION/LEADERSHIP': '#3182CE',   # Professional blue - Supervision
+            'ORGANIZATIONAL INFLUENCES': '#9F7AEA' # Professional purple - Organization
         }
         
-        # 定义节点位置（手动布局以确保美观）
+        # Enhanced node positioning for better readability and professional layout
         positions = {
-            # 根节点
-            'HFACS Framework': (0, 4),
+            # Root node - centered at top
+            'HFACS Framework': (0, 5),
             
-            # 第一层 - UNSAFE ACTS
-            'UNSAFE ACTS': (-3, 3),
-            'UNSAFE ACTS—Errors—Performance/Skill-Based': (-4.5, 2.5),
-            'UNSAFE ACTS—Errors—Judgement & Decision-Making': (-3, 2.5),
-            'UNSAFE ACTS—Known Deviations': (-1.5, 2.5),
+            # Layer 1 - UNSAFE ACTS (spread wider for better readability)
+            'UNSAFE ACTS': (-4.5, 4),
+            'UNSAFE ACTS—Errors—Performance/Skill-Based': (-6, 3),
+            'UNSAFE ACTS—Errors—Judgement & Decision-Making': (-4.5, 3),
+            'UNSAFE ACTS—Known Deviations': (-3, 3),
             
-            # 第二层 - PRECONDITIONS  
-            'PRECONDITIONS': (-1, 3),
-            'PRECONDITIONS—Physical Environment': (-2.5, 2),
-            'PRECONDITIONS—Technological Environment': (-1.5, 2),
-            'PRECONDITIONS—Team Coordination/Communication': (-0.5, 2),
-            'PRECONDITIONS—Training Conditions': (-2.5, 1.5),
-            'PRECONDITIONS—Mental Awareness (Attention)': (-1.5, 1.5),
-            'PRECONDITIONS—State of Mind': (-0.5, 1.5),
-            'PRECONDITIONS—Adverse Physiological': (-2, 1),
+            # Layer 2 - PRECONDITIONS (better vertical spacing)
+            'PRECONDITIONS': (-1.5, 4),
+            'PRECONDITIONS—Physical Environment': (-3, 2.5),
+            'PRECONDITIONS—Technological Environment': (-2, 2.5),
+            'PRECONDITIONS—Team Coordination/Communication': (-1, 2.5),
+            'PRECONDITIONS—Training Conditions': (-0, 2.5),
+            'PRECONDITIONS—Mental Awareness (Attention)': (-2.5, 1.5),
+            'PRECONDITIONS—State of Mind': (-1.5, 1.5),
+            'PRECONDITIONS—Adverse Physiological': (-0.5, 1.5),
             
-            # 第三层 - SUPERVISION/LEADERSHIP
-            'SUPERVISION/LEADERSHIP': (1, 3),
-            'SUPERVISION/LEADERSHIP—Unit Safety Culture': (0.5, 2),
-            'SUPERVISION/LEADERSHIP—Supervisory Known Deviations': (1.5, 2),
-            'SUPERVISION/LEADERSHIP—Ineffective Supervision': (0.5, 1.5),
+            # Layer 3 - SUPERVISION/LEADERSHIP (improved spacing)
+            'SUPERVISION/LEADERSHIP': (1.5, 4),
+            'SUPERVISION/LEADERSHIP—Unit Safety Culture': (0.5, 2.5),
+            'SUPERVISION/LEADERSHIP—Supervisory Known Deviations': (1.5, 2.5),
+            'SUPERVISION/LEADERSHIP—Ineffective Supervision': (2.5, 2.5),
             'SUPERVISION/LEADERSHIP—Ineffective Planning & Coordination': (1.5, 1.5),
             
-            # 第四层 - ORGANIZATIONAL INFLUENCES
-            'ORGANIZATIONAL INFLUENCES': (3, 3),
-            'ORGANIZATIONAL INFLUENCES—Climate/Culture': (2.5, 2),
-            'ORGANIZATIONAL INFLUENCES—Policy/Procedures/Process': (3.5, 2),
-            'ORGANIZATIONAL INFLUENCES—Resource Support': (2.5, 1.5),
-            'ORGANIZATIONAL INFLUENCES—Training Program Issues': (3.5, 1.5),
+            # Layer 4 - ORGANIZATIONAL INFLUENCES (better distribution)
+            'ORGANIZATIONAL INFLUENCES': (4.5, 4),
+            'ORGANIZATIONAL INFLUENCES—Climate/Culture': (3.5, 2.5),
+            'ORGANIZATIONAL INFLUENCES—Policy/Procedures/Process': (4.5, 2.5),
+            'ORGANIZATIONAL INFLUENCES—Resource Support': (5.5, 2.5),
+            'ORGANIZATIONAL INFLUENCES—Training Program Issues': (4.5, 1.5),
         }
         
         # 创建图形对象
@@ -536,6 +592,9 @@ Be thorough and objective in your analysis."""
         identified_categories = set()
         if result.classifications:
             identified_categories = {cls.category for cls in result.classifications}
+            logger.info(f"Identified categories for visualization: {identified_categories}")
+        else:
+            logger.warning("No classifications found in result for visualization")
         
         # 添加连接线（边）
         edges = [
@@ -597,21 +656,21 @@ Be thorough and objective in your analysis."""
         
         # 添加节点
         for node, pos in positions.items():
-            # 确定节点样式 - 专业级视觉设计
+            # 确定节点样式 - 专业级视觉设计 - 修复字体颜色可读性
             if node == 'HFACS Framework':
                 # 根节点 - 最显眼的钻石形状
                 color = layer_colors[node]
                 size = 40
                 symbol = 'diamond'
-                text_color = 'white'
+                text_color = '#FFFFFF'  # 根节点保持白色，因为背景是深色
                 border_color = '#0F2027'
                 border_width = 4
             elif node in ['UNSAFE ACTS', 'PRECONDITIONS', 'SUPERVISION/LEADERSHIP', 'ORGANIZATIONAL INFLUENCES']:
-                # 层级节点 - 突出的圆形节点
+                # 层级节点 - 突出的圆形节点 - 改用深色字体确保可读性
                 color = layer_colors[node]
                 size = 32
                 symbol = 'circle'
-                text_color = 'white'
+                text_color = '#FFFFFF' if self._is_dark_color(layer_colors[node]) else '#2D3748'
                 border_color = '#FFFFFF'
                 border_width = 4
             else:
@@ -624,7 +683,8 @@ Be thorough and objective in your analysis."""
                     color = base_color
                     size = 26
                     symbol = 'circle'
-                    text_color = 'white'
+                    # 根据背景颜色智能选择文字颜色
+                    text_color = '#FFFFFF' if self._is_dark_color(base_color) else '#2D3748'
                     border_color = '#FFFFFF'
                     border_width = 3
                 else:
@@ -636,12 +696,36 @@ Be thorough and objective in your analysis."""
                     border_color = '#CBD5E0'
                     border_width = 2
             
-            # 创建显示文本（缩短长名称）
+            # Enhanced text processing for better readability
             display_text = node
             if '—' in node:
-                display_text = node.split('—')[-1]
+                # Split long category names into multiple lines for better readability
+                parts = node.split('—')
+                if len(parts) > 1:
+                    category_part = parts[-1]
+                    # Break long text into multiple lines if needed
+                    if len(category_part) > 20:
+                        words = category_part.split(' ')
+                        if len(words) > 2:
+                            mid = len(words) // 2
+                            display_text = ' '.join(words[:mid]) + '<br>' + ' '.join(words[mid:])
+                        else:
+                            display_text = category_part
+                    else:
+                        display_text = category_part
             
-            # 添加节点
+            # Determine appropriate font size for readability
+            if node == 'HFACS Framework':
+                font_size = 18
+                font_family = "Arial Black"
+            elif node in ['UNSAFE ACTS', 'PRECONDITIONS', 'SUPERVISION/LEADERSHIP', 'ORGANIZATIONAL INFLUENCES']:
+                font_size = 14
+                font_family = "Arial Bold"
+            else:
+                font_size = 11
+                font_family = "Arial"
+            
+            # Add node with enhanced styling
             fig.add_trace(go.Scatter(
                 x=[pos[0]],
                 y=[pos[1]],
@@ -655,9 +739,9 @@ Be thorough and objective in your analysis."""
                 text=display_text,
                 textposition='middle center',
                 textfont=dict(
-                    size=12 if node not in ['HFACS Framework'] + list(HFACS_LAYERS) else 16,
+                    size=font_size,
                     color=text_color,
-                    family="Arial Black" if node in ['HFACS Framework'] + list(HFACS_LAYERS) else "Arial Bold"
+                    family=font_family
                 ),
                 hovertemplate=f"<b style='color: {color}'>{node}</b><br>" + 
                              (f"<b>Confidence:</b> {next((cls.confidence for cls in result.classifications if cls.category == node), 0):.1%}<br>" if node in identified_categories else "") +
@@ -682,53 +766,53 @@ Be thorough and objective in your analysis."""
         for trace in legend_traces:
             fig.add_trace(trace)
         
-        # 设置布局 - 增强美观度和专业性
+        # Enhanced professional layout settings
         fig.update_layout(
             title={
-                'text': '<b style="color: #2D3748; font-size: 24px;">HFACS 8.0 Framework - UAV Incident Analysis</b><br>' +
-                       '<span style="color: #718096; font-size: 16px;">Four Layers • Eighteen Categories • Tree Visualization</span>',
+                'text': '<b style="color: #2D3748; font-size: 26px;">HFACS 8.0 Professional Framework Analysis</b><br>' +
+                       '<span style="color: #718096; font-size: 18px;">Four-Layer Human Factors Classification • UAV Incident Assessment</span>',
                 'x': 0.5,
                 'xanchor': 'center',
-                'font': {'size': 22, 'color': '#2D3748', 'family': 'Arial Black'}
+                'font': {'size': 24, 'color': '#2D3748', 'family': 'Arial Black'}
             },
             showlegend=True,
             legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=1.05,
+                y=1.08,
                 xanchor="center",
                 x=0.5,
-                bgcolor='rgba(255,255,255,0.95)',
-                bordercolor='rgba(113,128,150,0.3)',
-                borderwidth=2,
-                font=dict(size=12, color='#2D3748')
+                bgcolor='rgba(255,255,255,0.98)',
+                bordercolor='rgba(113,128,150,0.4)',
+                borderwidth=3,
+                font=dict(size=14, color='#2D3748', family='Arial Bold')
             ),
             xaxis=dict(
                 showgrid=False,
                 showticklabels=False,
                 zeroline=False,
-                range=[-5.5, 4.5]
+                range=[-7, 6.5]  # Expanded range for better spacing
             ),
             yaxis=dict(
                 showgrid=False,
                 showticklabels=False,
                 zeroline=False,
-                range=[0.3, 4.7]
+                range=[0.5, 5.5]  # Adjusted for better vertical spacing
             ),
-            plot_bgcolor='rgba(249,250,251,1)',  # 专业的浅色背景
+            plot_bgcolor='rgba(249,250,251,1)',  # Professional light background
             paper_bgcolor='#FFFFFF',
-            width=1400,
-            height=950,
-            margin=dict(t=130, b=70, l=80, r=80),
-            font=dict(family='Arial', size=12, color='#2D3748')
+            width=1600,  # Increased width for better readability
+            height=1000,  # Increased height for better spacing
+            margin=dict(t=140, b=80, l=100, r=100),  # Enhanced margins
+            font=dict(family='Arial', size=14, color='#2D3748')  # Larger base font
         )
         
-        # 添加说明文字 - 增强信息展示
+        # Add professional informational annotations
         if identified_categories:
             identified_count = len(identified_categories)
             total_categories = 18
             
-            # 计算分析统计信息
+            # Calculate analysis statistics
             high_confidence = sum(1 for cls in result.classifications if cls.confidence > 0.8)
             medium_confidence = sum(1 for cls in result.classifications if 0.5 <= cls.confidence <= 0.8)
             low_confidence = sum(1 for cls in result.classifications if cls.confidence < 0.5)
@@ -835,46 +919,86 @@ Be thorough and objective in your analysis."""
         )
     
     def _mock_hfacs_analysis(self, incident_data: Dict) -> HFACSAnalysisResult:
-        """模拟HFACS分析"""
+        """Mock HFACS analysis with enhanced keyword detection"""
 
         narrative = incident_data.get('narrative', '').lower()
         human_factors = incident_data.get('human_factors', '').lower()
+        all_text = f"{narrative} {human_factors}".lower()
 
-        # 基于关键词的简单分类
+        # Enhanced classification based on keywords
         classifications = []
 
-        # UNSAFE ACTS
-        if any(word in narrative for word in ['error', 'mistake', 'wrong', 'decision']):
+        # UNSAFE ACTS - Errors
+        if any(word in all_text for word in ['error', 'mistake', 'wrong', 'decision', 'misjudged', 'failed to']):
             classifications.append(HFACSClassification(
                 category="UNSAFE ACTS—Errors—Judgement & Decision-Making",
                 layer="UNSAFE ACTS",
-                confidence=0.7,
-                reasoning="Evidence of decision-making errors in the narrative",
+                confidence=0.8,
+                reasoning="Evidence of decision-making errors in the incident narrative",
                 evidence=["Decision-related keywords found in narrative"]
             ))
 
-        # PRECONDITIONS
-        if any(word in narrative for word in ['communication', 'coordination', 'team']):
+        if any(word in all_text for word in ['skill', 'technique', 'performance', 'inexperience', 'proficiency']):
+            classifications.append(HFACSClassification(
+                category="UNSAFE ACTS—Errors—Performance/Skill-Based",
+                layer="UNSAFE ACTS",
+                confidence=0.7,
+                reasoning="Performance or skill-based errors identified",
+                evidence=["Skill-related factors mentioned"]
+            ))
+
+        # UNSAFE ACTS - Violations
+        if any(word in all_text for word in ['violation', 'deviated', 'ignored', 'bypassed', 'shortcut']):
+            classifications.append(HFACSClassification(
+                category="UNSAFE ACTS—Known Deviations",
+                layer="UNSAFE ACTS",
+                confidence=0.7,
+                reasoning="Evidence of procedural violations or deviations",
+                evidence=["Violation-related keywords found"]
+            ))
+
+        # PRECONDITIONS - Environment
+        if any(word in all_text for word in ['weather', 'wind', 'visibility', 'environment', 'conditions']):
+            classifications.append(HFACSClassification(
+                category="PRECONDITIONS—Physical Environment",
+                layer="PRECONDITIONS",
+                confidence=0.6,
+                reasoning="Adverse physical environmental conditions identified",
+                evidence=["Environmental factors mentioned"]
+            ))
+
+        # PRECONDITIONS - Communication
+        if any(word in all_text for word in ['communication', 'coordination', 'team', 'radio', 'contact']):
             classifications.append(HFACSClassification(
                 category="PRECONDITIONS—Team Coordination/Communication",
                 layer="PRECONDITIONS",
-                confidence=0.6,
+                confidence=0.7,
                 reasoning="Communication or coordination issues identified",
                 evidence=["Communication-related factors mentioned"]
             ))
 
+        # PRECONDITIONS - Training
+        if any(word in all_text for word in ['training', 'experience', 'familiar', 'knowledge', 'preparation']):
+            classifications.append(HFACSClassification(
+                category="PRECONDITIONS—Training Conditions",
+                layer="PRECONDITIONS",
+                confidence=0.6,
+                reasoning="Training or preparation deficiencies indicated",
+                evidence=["Training-related issues mentioned"]
+            ))
+
         # SUPERVISION/LEADERSHIP
-        if any(word in narrative for word in ['training', 'supervision', 'procedure']):
+        if any(word in all_text for word in ['supervision', 'oversight', 'monitoring', 'guidance']):
             classifications.append(HFACSClassification(
                 category="SUPERVISION/LEADERSHIP—Ineffective Supervision",
                 layer="SUPERVISION/LEADERSHIP",
                 confidence=0.6,
-                reasoning="Training or supervision deficiencies indicated",
-                evidence=["Training or supervision issues mentioned"]
+                reasoning="Supervision or oversight deficiencies indicated",
+                evidence=["Supervision issues mentioned"]
             ))
 
         # ORGANIZATIONAL INFLUENCES
-        if any(word in narrative for word in ['policy', 'resource', 'management', 'procedure']):
+        if any(word in all_text for word in ['policy', 'procedure', 'process', 'standard', 'regulation']):
             classifications.append(HFACSClassification(
                 category="ORGANIZATIONAL INFLUENCES—Policy/Procedures/Process",
                 layer="ORGANIZATIONAL INFLUENCES",
@@ -883,7 +1007,11 @@ Be thorough and objective in your analysis."""
                 evidence=["Policy or procedural factors identified"]
             ))
 
-        # 生成可视化数据
+        logger.info(f"Mock HFACS analysis completed. Found {len(classifications)} classifications")
+        for cls in classifications:
+            logger.info(f"  - {cls.category} (confidence: {cls.confidence:.2f})")
+
+        # Generate visualization data
         visualization_data = self._generate_visualization_data(classifications)
 
         return HFACSAnalysisResult(
@@ -911,31 +1039,53 @@ Be thorough and objective in your analysis."""
         )
     
     def _fallback_hfacs_analysis(self, incident_data: Dict) -> HFACSAnalysisResult:
-        """备用HFACS分析"""
+        """Fallback HFACS analysis with basic classification"""
+
+        # Provide basic fallback classifications for demonstration
+        fallback_classifications = [
+            HFACSClassification(
+                category="UNSAFE ACTS—Errors—Judgement & Decision-Making",
+                layer="UNSAFE ACTS",
+                confidence=0.4,
+                reasoning="Fallback analysis - manual review required",
+                evidence=["System analysis unavailable"]
+            ),
+            HFACSClassification(
+                category="PRECONDITIONS—Training Conditions",
+                layer="PRECONDITIONS",
+                confidence=0.3,
+                reasoning="Fallback analysis - manual review required",
+                evidence=["System analysis unavailable"]
+            )
+        ]
+
+        # Generate visualization data for fallback
+        visualization_data = self._generate_visualization_data(fallback_classifications)
+
         return HFACSAnalysisResult(
-            classifications=[],
+            classifications=fallback_classifications,
             primary_factors=["Further analysis required"],
             contributing_factors=["System analysis temporarily unavailable"],
             recommendations=["Recommend expert manual HFACS analysis"],
-            analysis_summary="System temporarily unable to perform detailed HFACS analysis. Professional manual analysis recommended.",
+            analysis_summary="System temporarily unable to perform detailed HFACS analysis. Basic fallback classifications provided for demonstration. Professional manual analysis recommended.",
             confidence_score=0.3,
             analysis_timestamp=datetime.now().isoformat(),
-            visualization_data={}
+            visualization_data=visualization_data
         )
     
-    def generate_hfacs_report(self, result: HFACSAnalysisResult) -> str:
-        """生成HFACS分析报告"""
+    def generate_hfacs_report(self, result: HFACSAnalysisResult, lang: str = 'zh') -> str:
+        """Generate HFACS analysis report"""
 
         report = f"""
-# HFACS 8.0 人因分析报告
+# {get_text('hfacs_report_title', lang)}
 
-**分析时间:** {result.analysis_timestamp}
-**置信度:** {result.confidence_score:.2f}
+**{get_text('analysis_time', lang)}:** {result.analysis_timestamp}
+**{get_text('confidence', lang)}:** {result.confidence_score:.2f}
 
-## 分析总结
+## {get_text('analysis_summary', lang)}
 {result.analysis_summary}
 
-## HFACS分类结果
+## {get_text('hfacs_classification_results', lang)}
 
 """
 
@@ -951,29 +1101,29 @@ Be thorough and objective in your analysis."""
                 report += f"### {level}\n\n"
                 for classification in classifications:
                     report += f"**{classification.category}**\n"
-                    report += f"- 分析: {classification.reasoning}\n"
-                    report += f"- 置信度: {classification.confidence:.2f}\n"
+                    report += f"- {get_text('analysis', lang)}: {classification.reasoning}\n"
+                    report += f"- {get_text('confidence', lang)}: {classification.confidence:.2f}\n"
                     if classification.evidence:
-                        report += f"- 证据: {', '.join(classification.evidence)}\n"
+                        report += f"- {get_text('evidence', lang)}: {', '.join(classification.evidence)}\n"
                     report += "\n"
 
         # 主要因素
         if result.primary_factors:
-            report += "## 主要人因因素\n\n"
+            report += f"## {get_text('primary_human_factors', lang)}\n\n"
             for i, factor in enumerate(result.primary_factors, 1):
                 report += f"{i}. {factor}\n"
             report += "\n"
 
         # 贡献因素
         if result.contributing_factors:
-            report += "## 贡献因素\n\n"
+            report += f"## {get_text('contributing_factors', lang)}\n\n"
             for i, factor in enumerate(result.contributing_factors, 1):
                 report += f"{i}. {factor}\n"
             report += "\n"
 
         # 改进建议
         if result.recommendations:
-            report += "## 改进建议\n\n"
+            report += f"## {get_text('improvement_recommendations', lang)}\n\n"
             for i, rec in enumerate(result.recommendations, 1):
                 report += f"{i}. {rec}\n"
             report += "\n"
@@ -1012,32 +1162,60 @@ Be thorough and objective in your analysis."""
         return stats
 
 def main():
-    """测试函数"""
+    """Enhanced test function for HFACS analyzer"""
+    print("Testing HFACS Analyzer...")
+
     # 测试数据
     test_incident = {
         'date': '2024-01-15',
         'flight_phase': 'Cruise',
         'mission_type': 'Training',
         'weather': 'VMC',
-        'narrative': 'The pilot made a decision error during the flight which led to a communication breakdown. There was inadequate supervision and the training procedures were not followed properly.',
-        'human_factors': 'Decision making, Communication, Training',
+        'narrative': 'The pilot made a decision error during the flight which led to a communication breakdown. There was inadequate supervision and the training procedures were not followed properly. The pilot was fatigued and had insufficient training on the aircraft systems.',
+        'human_factors': 'Decision making, Communication, Training, Fatigue',
         'primary_problem': 'Human Error',
-        'contributing_factors': 'Inadequate training, poor communication protocols'
+        'contributing_factors': 'Inadequate training, poor communication protocols, fatigue'
     }
-    
+
+    print(f"Analyzing incident: {test_incident['narrative'][:100]}...")
+
     # 创建分析器并测试
     analyzer = HFACSAnalyzer()
     result = analyzer.analyze_hfacs(test_incident)
-    
+
     print("HFACS分析结果:")
+    print(f"识别的分类数量: {len(result.classifications) if result.classifications else 0}")
+
+    if result.classifications:
+        print("识别的分类:")
+        for cls in result.classifications:
+            print(f"  - {cls.category} (层级: {cls.layer}, 置信度: {cls.confidence:.2f})")
+
     print(f"主要因素: {result.primary_factors}")
     print(f"建议措施: {result.recommendations}")
     print(f"置信度: {result.confidence_score}")
-    
+
+    # 测试可视化
+    try:
+        tree_fig = analyzer.create_hfacs_tree_visualization(result)
+        print("✅ 树状图可视化创建成功")
+    except Exception as e:
+        print(f"❌ 树状图可视化失败: {e}")
+
+    try:
+        viz_charts = analyzer.create_hfacs_visualizations(result)
+        print(f"✅ 创建了 {len(viz_charts)} 个可视化图表")
+    except Exception as e:
+        print(f"❌ 可视化图表创建失败: {e}")
+
     # 生成报告
-    report = analyzer.generate_hfacs_report(result)
-    print("\n" + "="*50)
-    print(report)
+    try:
+        report = analyzer.generate_hfacs_report(result)
+        print("\n" + "="*50)
+        print("生成的报告:")
+        print(report[:500] + "..." if len(report) > 500 else report)
+    except Exception as e:
+        print(f"❌ 报告生成失败: {e}")
 
 if __name__ == "__main__":
     main()

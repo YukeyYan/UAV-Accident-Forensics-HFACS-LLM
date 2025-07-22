@@ -1,6 +1,6 @@
 """
-ASRS无人机事故报告数据处理模块
-处理CSV数据，提取关键信息，为AI分析做准备
+ASRS UAV Incident Report Data Processing Module
+Process CSV data, extract key information, prepare for AI analysis
 """
 
 import pandas as pd
@@ -12,12 +12,12 @@ from typing import Dict, List, Optional, Tuple
 import re
 import logging
 
-# 配置日志
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class ASRSDataProcessor:
-    """ASRS数据处理器"""
+    """ASRS Data Processor"""
     
     def __init__(self, csv_file_path: str, db_path: str = "asrs_data.db"):
         self.csv_file_path = csv_file_path
@@ -26,41 +26,87 @@ class ASRSDataProcessor:
         self.processed_data = []
         
     def load_data(self) -> pd.DataFrame:
-        """加载CSV数据"""
+        """Load CSV data"""
         try:
-            # 读取CSV文件，跳过第一行（空行）
-            self.df = pd.read_csv(self.csv_file_path, skiprows=[0])
-            logger.info(f"成功加载数据，共{len(self.df)}条记录")
+            # Read CSV file, skip first two rows (multi-line headers), use second row as column names
+            self.df = pd.read_csv(self.csv_file_path, skiprows=[0], header=0)
+            
+            # Remove completely empty rows (like third row)
+            self.df = self.df.dropna(how='all')
+            
+            logger.info(f"Successfully loaded ASRS UAV data, {len(self.df)} records total")
+            
+            # Display basic statistics
+            if len(self.df) > 0:
+                logger.info(f"Number of columns: {len(self.df.columns)}")
+                logger.info(f"Main fields: ACN, Narrative, Synopsis, etc.")
+                
+                # Check key fields
+                key_fields = ['ACN', 'Narrative', 'Synopsis', 'Primary Problem']
+                available_fields = [field for field in key_fields if field in self.df.columns]
+                logger.info(f"Available key fields: {available_fields}")
+            
             return self.df
         except Exception as e:
-            logger.error(f"加载数据失败: {e}")
+            logger.error(f"Failed to load data: {e}")
             raise
     
     def clean_data(self) -> pd.DataFrame:
-        """清理和预处理数据"""
+        """Clean and preprocess data"""
         if self.df is None:
-            raise ValueError("请先加载数据")
+            raise ValueError("Please load data first")
+        
+        logger.info("开始清理ASRS UAV事故数据...")
+        original_count = len(self.df)
         
         # 删除完全空白的行
         self.df = self.df.dropna(how='all')
+        logger.info(f"删除空行后，从{original_count}条减少到{len(self.df)}条记录")
         
         # 处理关键字段的缺失值
         key_columns = ['ACN', 'Narrative', 'Synopsis', 'Primary Problem', 'Human Factors']
         for col in key_columns:
             if col in self.df.columns:
                 self.df[col] = self.df[col].fillna('')
+                logger.info(f"处理字段 '{col}' 的缺失值")
+            else:
+                logger.warning(f"关键字段 '{col}' 不存在于数据中")
         
-        # 标准化日期格式
+        # 标准化日期格式 - ASRS日期格式为YYYYMM
         if 'Date' in self.df.columns:
-            self.df['Date'] = pd.to_datetime(self.df['Date'], format='%Y%m', errors='coerce')
+            try:
+                # 将YYYYMM格式转换为日期
+                self.df['Date'] = pd.to_datetime(self.df['Date'], format='%Y%m', errors='coerce')
+                logger.info("日期字段标准化完成")
+            except Exception as e:
+                logger.warning(f"日期格式转换失败: {e}")
         
-        logger.info(f"数据清理完成，剩余{len(self.df)}条有效记录")
+        # 过滤掉关键字段为空的记录（ACN是必须的）
+        if 'ACN' in self.df.columns:
+            before_filter = len(self.df)
+            self.df = self.df[self.df['ACN'].notna() & (self.df['ACN'] != '')]
+            after_filter = len(self.df)
+            if before_filter != after_filter:
+                logger.info(f"过滤无ACN记录：从{before_filter}条减少到{after_filter}条")
+        
+        # 确保数据类型正确
+        if 'ACN' in self.df.columns:
+            self.df['ACN'] = self.df['ACN'].astype(str)
+        
+        logger.info(f"数据清理完成！最终有效记录: {len(self.df)}条")
+        
+        # 显示数据预览
+        if len(self.df) > 0:
+            logger.info("数据预览 - 前几个ACN号码:")
+            acn_sample = self.df['ACN'].head(3).tolist() if 'ACN' in self.df.columns else []
+            logger.info(f"ACN样本: {acn_sample}")
+        
         return self.df
     
     def extract_key_features(self) -> List[Dict]:
         """提取关键特征用于AI分析"""
         if self.df is None:
-            raise ValueError("请先加载数据")
+            raise ValueError("Please load data first")
         
         self.processed_data = []
         

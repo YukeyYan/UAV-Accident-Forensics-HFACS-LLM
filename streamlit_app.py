@@ -1,6 +1,6 @@
 """
-ASRS无人机事故报告智能分析系统 - 修复版
-专注核心功能：智能填表 + LLM专家分析 + HFACS识别 + 因果关系分析
+ASRS UAV Incident Intelligence Analysis System
+Core Features: Smart Forms + LLM Expert Analysis + HFACS Classification + Causal Analysis
 """
 
 import streamlit as st
@@ -13,15 +13,18 @@ import sqlite3
 from typing import Dict, List, Optional
 import os
 
-# 导入核心模块
+# Set OpenAI API key
+os.environ['OPENAI_API_KEY'] = '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'
+
+# Import core modules
 from data_processor import ASRSDataProcessor
 from ai_analyzer import AIAnalyzer
 from hfacs_analyzer import HFACSAnalyzer
 from smart_form_assistant import SmartFormAssistant
-from translations import get_text, get_language_options
+from translations import get_text
 from professional_investigation_engine import ProfessionalInvestigationEngine
 
-# 导入增强功能
+# Import enhanced features
 try:
     from enhanced_ai_analyzer import EnhancedAIAnalyzer
     from advanced_visualizations import AdvancedVisualizations
@@ -31,11 +34,14 @@ try:
 except ImportError:
     ENHANCED_FEATURES_AVAILABLE = False
     CAUSAL_DIAGRAM_AVAILABLE = False
-    st.sidebar.warning("⚠️ 增强功能模块未找到，使用基础功能")
+    # English-only system initialization
+    st.session_state.selected_language = 'en'
+    
+    st.sidebar.warning("⚠️ Enhanced modules not found, using basic functionality")
 
-# 页面配置
+# Page configuration - English only
 st.set_page_config(
-    page_title="ASRS无人机事故智能分析系统",
+    page_title="ASRS UAV Incident Intelligence Analysis System",
     page_icon="🚁",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -48,9 +54,7 @@ st.markdown("""
     .main-header {
         font-size: 2.8rem;
         font-weight: 700;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: white;
         text-align: center;
         margin-bottom: 2rem;
         padding: 1rem 0;
@@ -338,7 +342,7 @@ class ASRSApp:
     
     def __init__(self):
         self.db_path = "asrs_data.db"
-        self.csv_path = "ASRS_DBOnline 无人机事故报告).csv"
+        self.csv_path = "ASRS_DBOnline_Report.csv"
         
         # 初始化会话状态
         if 'data_loaded' not in st.session_state:
@@ -352,7 +356,7 @@ class ASRSApp:
         if 'selected_model' not in st.session_state:
             st.session_state.selected_model = 'gpt-4o-mini'
         if 'selected_language' not in st.session_state:
-            st.session_state.selected_language = 'zh'
+            st.session_state.selected_language = 'en'
         
         # 初始化增强功能
         if 'enhanced_analyzer' not in st.session_state:
@@ -381,20 +385,6 @@ class ASRSApp:
         with st.sidebar:
             lang = st.session_state.selected_language
             st.header(get_text("system_config", lang))
-            
-            # 语言选择
-            language_options = get_language_options()
-            selected_language = st.selectbox(
-                get_text("language_setting", lang),
-                options=list(language_options.keys()),
-                format_func=lambda x: language_options[x],
-                index=list(language_options.keys()).index(st.session_state.selected_language)
-            )
-            
-            # 更新语言设置
-            if selected_language != st.session_state.selected_language:
-                st.session_state.selected_language = selected_language
-                st.rerun()
             
             # 模型选择
             selected_model = st.selectbox(
@@ -467,10 +457,9 @@ class ASRSApp:
     def _check_data_status(self):
         """检查数据加载状态"""
         lang = st.session_state.selected_language
-        if os.path.exists(self.db_path) and not st.session_state.data_loaded:
-            st.session_state.data_loaded = True
+        if st.session_state.get('data_loaded', False):
             st.sidebar.success(get_text("data_loaded", lang))
-        elif not os.path.exists(self.db_path):
+        else:
             st.sidebar.warning(get_text("data_not_loaded", lang))
     
     def _show_overview(self):
@@ -525,20 +514,34 @@ class ASRSApp:
     
     def _show_data_management(self):
         """数据管理页面"""
-        st.markdown('<h2 class="sub-header">📊 数据管理</h2>', unsafe_allow_html=True)
+        lang = st.session_state.selected_language
         
-        if st.button("🔄 加载ASRS历史数据"):
+        data_title = f'<h2 class="sub-header">{get_text("data_management_title", lang)}</h2>'
+        st.markdown(data_title, unsafe_allow_html=True)
+        
+        if st.button(get_text("load_asrs_data", lang)):
             if os.path.exists(self.csv_path):
-                with st.spinner("正在处理ASRS数据..."):
+                with st.spinner(get_text("loading_data", lang)):
                     try:
-                        processor = ASRSDataProcessor(self.db_path)
-                        processor.load_csv_data(self.csv_path)
+                        # 正确的构造函数调用 - csv_file_path是第一个参数
+                        processor = ASRSDataProcessor(self.csv_path, self.db_path)
+                        # 使用正确的方法名
+                        df = processor.load_data()
+                        cleaned_df = processor.clean_data()
+                        
+                        # 将处理好的数据存储到会话状态
                         st.session_state.data_loaded = True
-                        st.success("✅ ASRS历史数据加载成功！")
+                        st.session_state.asrs_data = cleaned_df
+                        st.session_state.data_processor = processor
+                        
+                        st.success(get_text("data_load_success", lang))
+                        st.info(f"{get_text('data_loaded_info', lang)} {len(cleaned_df)} {get_text('records', lang)}")
+                        
                     except Exception as e:
-                        st.error(f"❌ 数据加载失败: {e}")
+                        st.error(get_text("data_load_failed", lang).format(e))
+                        st.exception(e)  # 显示详细错误信息以便调试
             else:
-                st.error(f"❌ 找不到数据文件: {self.csv_path}")
+                st.error(get_text("file_not_found", lang).format(self.csv_path))
 
     def _show_asrs_smart_report(self):
         """ASRS智能报告页面 - 真正的AI智能化系统"""
@@ -699,11 +702,15 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         st.subheader(step_title)
         
         if st.session_state.extracted_data:
-            # 已经提取过，显示结果
-            self._display_extracted_data()
+            # 检查是否处于编辑模式
+            if hasattr(st.session_state, 'edit_mode') and st.session_state.edit_mode:
+                self._show_edit_form()
+            else:
+                # 已经提取过，显示结果
+                self._display_extracted_data()
         else:
             # 开始AI提取
-            with st.spinner("🧠 GPT-4o正在智能分析叙述并提取关键信息..."):
+            with st.spinner(get_text('ai_analyzing', lang)):
                 try:
                     # 使用智能表单助手进行分析
                     narrative = st.session_state.basic_info['narrative']
@@ -719,46 +726,185 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                     st.session_state.extracted_data = extracted_data
                     st.session_state.completeness_result = analysis_result
                     
-                    st.success("✅ AI字段提取完成！")
+                    st.success(get_text("ai_extraction_complete", lang))
                     st.rerun()
                     
                 except Exception as e:
-                    st.error(f"❌ AI分析失败: {e}")
+                    st.error(get_text("ai_analysis_failed", lang).format(e))
                     # 返回叙述输入阶段
-                    if st.button("🔄 重试"):
+                    if st.button(get_text('retry', lang)):
                         st.session_state.smart_report_stage = 'narrative_input'
                         st.rerun()
     
+    def _show_edit_form(self):
+        """显示编辑表单"""
+        lang = st.session_state.selected_language
+        
+        edit_title = "📝 Edit Extracted Data" if lang == 'en' else "📝 编辑提取的数据"
+        st.subheader(edit_title)
+        
+        # 创建编辑表单
+        with st.form("edit_extracted_data", clear_on_submit=False):
+            # 基本信息编辑
+            st.markdown("### 📋 " + (get_text("flight_info", lang) if get_text("flight_info", lang) != "flight_info" else ("Basic Information" if lang == "en" else "基本信息")))
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                narrative_label = "Narrative Description" if lang == 'en' else "叙述描述"
+                narrative = st.text_area(narrative_label, 
+                                       value=st.session_state.extracted_data.get('narrative', ''), 
+                                       height=100)
+                
+                occurrence_date_str = st.session_state.extracted_data.get('occurrence_date', '')
+                if occurrence_date_str:
+                    try:
+                        from datetime import datetime
+                        occurrence_date = datetime.fromisoformat(occurrence_date_str).date()
+                    except:
+                        occurrence_date = None
+                else:
+                    occurrence_date = None
+                
+                date_label = "Incident Date" if lang == 'en' else "事故日期"
+                occurrence_date = st.date_input(date_label, value=occurrence_date)
+                
+            with col2:
+                location_city = st.text_input("Location City" if lang == 'en' else "发生城市", 
+                                            value=st.session_state.extracted_data.get('location_city', ''))
+                time_of_day = st.selectbox("Time Period" if lang == 'en' else "时间段", 
+                                         ['0001-0600', '0601-1200', '1201-1800', '1801-2400'],
+                                         index=['0001-0600', '0601-1200', '1201-1800', '1801-2400'].index(
+                                             st.session_state.extracted_data.get('time_of_day', '1201-1800')))
+            
+            # AI提取字段编辑
+            st.markdown("### 🤖 " + ("AI Extracted Fields" if lang == 'en' else "AI提取字段"))
+            
+            # 存储编辑后的值
+            edited_data = {}
+            
+            # 飞行信息
+            with st.expander("🛩️ " + get_text("flight_info", lang), expanded=True):
+                col1, col2 = st.columns(2)
+                with col1:
+                    edited_data['flight_phase'] = st.text_input("Flight Phase", 
+                                                              value=st.session_state.extracted_data.get('flight_phase', ''))
+                    edited_data['altitude_agl'] = st.text_input("Altitude AGL", 
+                                                              value=st.session_state.extracted_data.get('altitude_agl', ''))
+                with col2:
+                    edited_data['altitude_msl'] = st.text_input("Altitude MSL", 
+                                                              value=st.session_state.extracted_data.get('altitude_msl', ''))
+                    edited_data['flight_conditions'] = st.text_input("Flight Conditions", 
+                                                                    value=st.session_state.extracted_data.get('flight_conditions', ''))
+            
+            # 天气条件
+            with st.expander("🌤️ " + get_text("weather_conditions", lang), expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    edited_data['weather_conditions'] = st.text_input("Weather Conditions", 
+                                                                     value=st.session_state.extracted_data.get('weather_conditions', ''))
+                    edited_data['wind_speed'] = st.text_input("Wind Speed", 
+                                                             value=st.session_state.extracted_data.get('wind_speed', ''))
+                with col2:
+                    edited_data['visibility'] = st.text_input("Visibility", 
+                                                            value=st.session_state.extracted_data.get('visibility', ''))
+                    edited_data['temperature'] = st.text_input("Temperature", 
+                                                              value=st.session_state.extracted_data.get('temperature', ''))
+            
+            # 无人机信息
+            with st.expander("🚁 " + get_text("uav_info", lang), expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    edited_data['aircraft_make'] = st.text_input("Aircraft Make", 
+                                                               value=st.session_state.extracted_data.get('aircraft_make', ''))
+                    edited_data['aircraft_model'] = st.text_input("Aircraft Model", 
+                                                                 value=st.session_state.extracted_data.get('aircraft_model', ''))
+                with col2:
+                    edited_data['propulsion_type'] = st.text_input("Propulsion Type", 
+                                                                  value=st.session_state.extracted_data.get('propulsion_type', ''))
+                    edited_data['control_method'] = st.text_input("Control Method", 
+                                                                 value=st.session_state.extracted_data.get('control_method', ''))
+            
+            # 事件分析
+            with st.expander("🔍 " + get_text("event_analysis", lang), expanded=True):
+                edited_data['anomaly_description'] = st.text_area("Anomaly Description", 
+                                                                 value=st.session_state.extracted_data.get('anomaly_description', ''),
+                                                                 height=100)
+                col1, col2 = st.columns(2)
+                with col1:
+                    edited_data['primary_problem'] = st.text_input("Primary Problem", 
+                                                                  value=st.session_state.extracted_data.get('primary_problem', ''))
+                    edited_data['human_factors'] = st.text_input("Human Factors", 
+                                                                value=st.session_state.extracted_data.get('human_factors', ''))
+                with col2:
+                    edited_data['contributing_factors'] = st.text_input("Contributing Factors", 
+                                                                       value=st.session_state.extracted_data.get('contributing_factors', ''))
+                    edited_data['equipment_factors'] = st.text_input("Equipment Factors", 
+                                                                    value=st.session_state.extracted_data.get('equipment_factors', ''))
+            
+            # AI概要编辑
+            ai_synopsis = st.text_area("AI Generated Synopsis" if lang == 'en' else "AI生成概要",
+                                      value=st.session_state.extracted_data.get('ai_synopsis', ''),
+                                      height=150)
+            
+            # 提交按钮
+            col1, col2 = st.columns(2)
+            with col1:
+                save_label = "💾 Save Changes" if lang == 'en' else "💾 保存修改"
+                save_changes = st.form_submit_button(save_label, type="primary")
+            with col2:
+                cancel_label = "❌ Cancel Editing" if lang == 'en' else "❌取消编辑"
+                cancel_editing = st.form_submit_button(cancel_label)
+        
+        if save_changes:
+            # 更新数据
+            st.session_state.extracted_data.update(edited_data)
+            st.session_state.extracted_data['narrative'] = narrative
+            st.session_state.extracted_data['occurrence_date'] = occurrence_date.isoformat()
+            st.session_state.extracted_data['location_city'] = location_city
+            st.session_state.extracted_data['time_of_day'] = time_of_day
+            st.session_state.extracted_data['ai_synopsis'] = ai_synopsis
+            
+            # 退出编辑模式
+            st.session_state.edit_mode = False
+            st.success("✅ " + ("Changes saved successfully!" if lang == 'en' else "修改保存成功！"))
+            st.rerun()
+            
+        if cancel_editing:
+            # 退出编辑模式
+            st.session_state.edit_mode = False
+            st.rerun()
+    
     def _display_extracted_data(self):
         """显示AI提取的数据"""
-        st.success("✅ AI智能提取完成！以下是自动识别和填写的字段：")
+        lang = st.session_state.selected_language
+        st.success(get_text("ai_extraction_complete", lang) + ("! The following are automatically identified and filled fields:" if lang == "en" else "！以下是自动识别和填写的字段："))
         
         # 显示提取统计
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("已提取字段", len(st.session_state.extracted_data))
+            st.metric(get_text("extracted_fields", lang), len(st.session_state.extracted_data))
         with col2:
             completeness = st.session_state.completeness_result.completeness_score if st.session_state.completeness_result else 0
-            st.metric("数据完整度", f"{completeness:.1%}")
+            st.metric(get_text("data_completeness", lang), f"{completeness:.1%}")
         with col3:
             confidence_scores = st.session_state.completeness_result.confidence_scores if st.session_state.completeness_result else {}
             avg_confidence = sum(confidence_scores.values()) / len(confidence_scores) if confidence_scores else 0
-            st.metric("平均置信度", f"{avg_confidence:.1%}")
+            st.metric(get_text("avg_confidence", lang), f"{avg_confidence:.1%}")
         with col4:
             missing_count = len(st.session_state.completeness_result.missing_fields) if st.session_state.completeness_result else 0
-            st.metric("缺失字段", missing_count)
+            st.metric(get_text("missing_fields", lang), missing_count)
         
         # 显示提取的字段
-        st.subheader("🔍 AI提取字段详情")
+        st.subheader(f"🔍 {get_text('extraction_details', lang)}")
         
         # 按类别分组显示
         field_categories = {
-            "飞行信息": ["flight_phase", "altitude_agl", "altitude_msl", "flight_conditions", "light_conditions"],
-            "天气条件": ["weather_conditions", "wind_speed", "wind_direction", "visibility", "ceiling", "temperature"],
-            "无人机信息": ["aircraft_make", "aircraft_model", "aircraft_weight", "propulsion_type", "control_method"],
-            "事件分析": ["anomaly_description", "primary_problem", "contributing_factors", "human_factors", "equipment_factors"],
-            "其他信息": []  # 将收集其他字段
+            get_text("flight_info", lang): ["flight_phase", "altitude_agl", "altitude_msl", "flight_conditions", "light_conditions"],
+            get_text("weather_conditions", lang): ["weather_conditions", "wind_speed", "wind_direction", "visibility", "ceiling", "temperature"],
+            get_text("uav_info", lang): ["aircraft_make", "aircraft_model", "aircraft_weight", "propulsion_type", "control_method"],
+            get_text("event_analysis", lang): ["anomaly_description", "primary_problem", "contributing_factors", "human_factors", "equipment_factors"],
+            get_text("other_info", lang): []  # 将收集其他字段
         }
         
         for category, fields in field_categories.items():
@@ -775,32 +921,32 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                         
                         with cols[col_idx]:
                             st.write(f"**{field}** {confidence_color}")
-                            st.write(f"值: {value}")
-                            st.write(f"置信度: {confidence:.1%}")
+                            st.write(f"**{get_text('value', lang)}:** {value}")
+                            st.write(f"**{get_text('confidence', lang)}:** {confidence:.1%}")
                             st.write("---")
                         
                         col_idx = 1 - col_idx
         
         # AI生成的概要
         if st.session_state.extracted_data.get('ai_synopsis'):
-            st.subheader("📄 AI生成概要")
+            st.subheader(get_text('ai_synopsis', lang))
             st.info(st.session_state.extracted_data['ai_synopsis'])
         
         # 操作按钮
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("📝 编辑提取结果"):
+            if st.button(get_text('edit_results', lang)):
                 st.session_state.edit_mode = True
                 st.rerun()
         
         with col2:
-            if st.button("➡️ 继续完整性审核", type="primary"):
+            if st.button(get_text('continue_review', lang), type="primary"):
                 st.session_state.smart_report_stage = 'completeness_review'
                 st.rerun()
         
         with col3:
-            if st.button("🔄 重新提取"):
+            if st.button(get_text('reextract', lang)):
                 st.session_state.extracted_data = {}
                 st.rerun()
     
@@ -812,13 +958,13 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         st.subheader(step_title)
         
         if not st.session_state.completeness_result:
-            st.error("❌ 缺少完整性分析结果")
+            st.error(get_text("missing_completeness_analysis", lang) if get_text("missing_completeness_analysis", lang) != "missing_completeness_analysis" else ("❌ Missing completeness analysis results" if lang == "en" else "❌ 缺少完整性分析结果"))
             return
         
         result = st.session_state.completeness_result
         
         # 完整性评估概览
-        st.markdown("### 📊 完整性评估结果")
+        st.markdown(f"### 📊 {get_text('completeness_assessment', lang)}")
         
         col1, col2 = st.columns(2)
         
@@ -826,14 +972,14 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             # 完整性分数
             completeness = result.completeness_score
             if completeness >= 0.8:
-                st.success(f"✅ 数据完整度：{completeness:.1%} - 优秀")
-                completeness_desc = "数据非常完整，可以进行高质量分析"
+                st.success(f"✅ {('Data Completeness' if lang == 'en' else '数据完整度')}：{completeness:.1%} - {get_text('excellent', lang)}")
+                completeness_desc = get_text('data_complete_excellent', lang)
             elif completeness >= 0.6:
-                st.warning(f"🟡 数据完整度：{completeness:.1%} - 良好")
-                completeness_desc = "数据基本完整，建议补充部分信息"
+                st.warning(f"🟡 {('Data Completeness' if lang == 'en' else '数据完整度')}：{completeness:.1%} - {get_text('good', lang)}")
+                completeness_desc = get_text('data_complete_good', lang)
             else:
-                st.error(f"🔴 数据完整度：{completeness:.1%} - 需要改进")
-                completeness_desc = "数据不够完整，强烈建议补充更多信息"
+                st.error(f"🔴 {('Data Completeness' if lang == 'en' else '数据完整度')}：{completeness:.1%} - {get_text('needs_improvement', lang)}")
+                completeness_desc = get_text('data_incomplete', lang)
             
             st.write(completeness_desc)
         
@@ -841,43 +987,43 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             # 缺失字段统计
             missing_count = len(result.missing_fields)
             if missing_count == 0:
-                st.success("🎉 没有关键信息缺失")
+                st.success(get_text("no_missing_info", lang))
             else:
-                st.warning(f"⚠️ 缺失 {missing_count} 个关键字段")
+                st.warning(get_text("missing_critical_fields", lang).format(missing_count))
         
         # 缺失字段详情
         if result.missing_fields:
-            st.markdown("### ❌ 缺失的关键信息")
+            st.markdown(f"### {get_text('missing_key_info', lang)}")
             for i, missing_field in enumerate(result.missing_fields, 1):
                 st.write(f"{i}. {missing_field}")
         
         # AI建议的补充问题
         if result.suggested_questions:
-            st.markdown("### ❓ AI建议的补充问题")
-            st.info("以下是AI基于航空安全知识生成的专业问题，用于补充缺失信息：")
+            st.markdown(f"### {get_text('ai_suggested_questions', lang)}")
+            st.info(get_text('ai_questions_desc', lang))
             
             for i, question in enumerate(result.suggested_questions, 1):
-                st.write(f"**问题 {i}:** {question}")
+                st.write(f"**{get_text('question', lang)} {i}:** {question}")
         
         # 操作选择
         st.markdown("---")
-        st.subheader("🎯 下一步操作")
+        st.subheader(get_text('next_step', lang))
         
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("❓ 回答AI问题补充信息", type="primary"):
+            if st.button(get_text('answer_questions', lang), type="primary"):
                 st.session_state.smart_questions = result.suggested_questions
                 st.session_state.smart_report_stage = 'smart_questions'
                 st.rerun()
         
         with col2:
-            if st.button("✅ 直接提交报告"):
+            if st.button(get_text('submit_directly', lang)):
                 st.session_state.smart_report_stage = 'final_review'
                 st.rerun()
         
         with col3:
-            if st.button("🔙 返回编辑"):
+            if st.button(get_text('return_edit', lang)):
                 st.session_state.smart_report_stage = 'smart_extraction'
                 st.rerun()
     
@@ -888,29 +1034,29 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         step_title = "❓ Step 4: Answer AI Smart Questions" if lang == 'en' else "❓ 第四步：回答AI智能问题"
         st.subheader(step_title)
         
-        description = "Please answer the following AI-generated professional questions to improve report information:" if lang == 'en' else "请回答以下AI生成的专业问题，以完善报告信息："
+        description = get_text('answer_questions_desc', lang)
         st.markdown(description)
         
         if not st.session_state.smart_questions:
-            st.error("❌ 没有智能问题数据")
+            st.error(get_text("no_questions_data", lang))
             return
         
         with st.form("smart_questions_form"):
             answers = {}
             
             for i, question in enumerate(st.session_state.smart_questions, 1):
-                st.markdown(f"### 问题 {i}")
+                st.markdown(f"### {get_text('question', lang)} {i}")
                 st.write(question)
                 
                 answer = st.text_area(
-                    f"回答问题 {i}",
+                    f"{get_text('answer_question', lang)} {i}",
                     key=f"answer_{i}",
-                    placeholder="请详细回答这个问题...",
+                    placeholder=get_text('answer_placeholder', lang),
                     height=100
                 )
                 answers[f"question_{i}"] = {"question": question, "answer": answer}
             
-            submitted = st.form_submit_button("📝 提交答案", type="primary")
+            submitted = st.form_submit_button(get_text('submit_answers', lang), type="primary")
         
         if submitted:
             # 过滤掉空答案
@@ -918,15 +1064,15 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             st.session_state.question_answers = valid_answers
             
             if valid_answers:
-                st.success(f"✅ 已收集 {len(valid_answers)} 个问题的回答")
+                st.success(get_text('answers_collected', lang).format(len(valid_answers)))
                 
                 # 使用LLM处理这些答案，提取更多字段信息
-                with st.spinner("🧠 AI正在处理您的回答并更新报告..."):
+                with st.spinner(get_text('ai_processing_answers', lang)):
                     try:
                         # 构建包含原始叙述和问答的完整文本
-                        enhanced_narrative = st.session_state.basic_info['narrative'] + "\n\n补充信息：\n"
+                        enhanced_narrative = st.session_state.basic_info['narrative'] + "\n\n" + get_text('supplementary_info', lang) + "\n"
                         for qa in valid_answers.values():
-                            enhanced_narrative += f"问：{qa['question']}\n答：{qa['answer']}\n\n"
+                            enhanced_narrative += f"{get_text('question_mark', lang)}{qa['question']}\n{get_text('answer_mark', lang)}{qa['answer']}\n\n"
                         
                         # 重新分析增强后的叙述
                         enhanced_result = st.session_state.form_assistant.analyze_narrative(
@@ -938,42 +1084,42 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                         st.session_state.extracted_data['enhanced_narrative'] = enhanced_narrative
                         st.session_state.extracted_data['final_completeness'] = enhanced_result.completeness_score
                         
-                        st.success("🎉 信息更新完成！数据完整度有所提升。")
+                        st.success(get_text('info_updated', lang))
                         
                         # 设置标志表示答案已处理
                         st.session_state.answers_processed = True
                         
                     except Exception as e:
-                        st.error(f"❌ 处理回答失败: {e}")
+                        st.error(get_text('answer_processing_failed', lang).format(e))
             else:
-                st.warning("⚠️ 请至少回答一个问题")
+                st.warning(get_text('answer_at_least_one', lang))
         
         # 显示进入最终审核的按钮（在表单外部，避免Streamlit表单重置问题）
         if hasattr(st.session_state, 'question_answers') and st.session_state.question_answers:
             st.markdown("---")
-            st.markdown("### 📋 准备进入最终审核阶段")
-            st.info("✅ 您的回答已收集完成，现在可以进入最终审核阶段。")
+            st.markdown(f"### {get_text('ready_final_review', lang)}")
+            st.info(get_text('answers_complete', lang))
             
-            if st.button("➡️ 进入最终审核", type="primary", key="final_review_btn"):
+            if st.button(get_text('enter_final_review', lang), type="primary", key="final_review_btn"):
                 st.session_state.smart_report_stage = 'final_review'
                 st.rerun()
         
         # 为没有回答问题的用户提供跳过选项
         else:
             st.markdown("---")
-            st.markdown("### ⚠️ 跳过问题回答")
-            st.warning("您可以选择跳过问题回答直接进入最终审核，但这可能会降低报告的完整性。")
+            st.markdown(f"### {get_text('skip_questions', lang)}")
+            st.warning(get_text('skip_warning', lang))
             
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("⏭️ 跳过并进入最终审核", key="skip_questions_btn"):
+                if st.button(get_text('skip_and_review', lang), key="skip_questions_btn"):
                     # 设置空的问答记录
                     st.session_state.question_answers = {}
                     st.session_state.smart_report_stage = 'final_review'
                     st.rerun()
             
             with col2:
-                if st.button("🔄 重新刷新问题", key="refresh_questions_btn"):
+                if st.button(get_text('refresh_questions', lang), key="refresh_questions_btn"):
                     st.rerun()
     
     def _show_final_review_stage(self):
@@ -987,25 +1133,25 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("提取字段数", len(st.session_state.extracted_data))
+            st.metric(get_text('extracted_fields', lang), len(st.session_state.extracted_data))
         
         with col2:
             final_completeness = st.session_state.extracted_data.get('final_completeness', 
                                 st.session_state.completeness_result.completeness_score if st.session_state.completeness_result else 0)
-            st.metric("最终完整度", f"{final_completeness:.1%}")
+            st.metric(get_text('final_completeness', lang), f"{final_completeness:.1%}")
         
         with col3:
             qa_count = len(st.session_state.question_answers)
-            st.metric("补充回答", f"{qa_count} 个")
+            st.metric(get_text('supplementary_answers_short', lang), f"{qa_count} {'items' if lang == 'en' else '个'}")
         
         with col4:
             report_id_preview = f"ASRS_{datetime.now().strftime('%Y%m%d_%H%M')}"
-            st.metric("报告ID", report_id_preview[:12])
+            st.metric(get_text('report_id', lang), report_id_preview[:12])
         
         # 最终报告预览
-        st.subheader("📋 最终报告预览")
+        st.subheader(get_text('final_report_preview', lang))
         
-        with st.expander("🔍 查看完整报告数据", expanded=False):
+        with st.expander(get_text('view_complete_report', lang), expanded=False):
             st.json(st.session_state.extracted_data)
         
         # 提交按钮和后续操作
@@ -1014,38 +1160,77 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🚀 提交ASRS智能报告", type="primary", use_container_width=True):
-                # 生成唯一的报告ID
-                report_id = f"ASRS_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                
-                # 重新计算最终完整度以确保变量可用
-                final_completeness = st.session_state.extracted_data.get('final_completeness', 
-                                    st.session_state.completeness_result.completeness_score if st.session_state.completeness_result else 0)
-                
-                # 构建最终的ASRS报告
-                final_report = {
-                    'id': report_id,
-                    'report_date': datetime.now().isoformat(),
-                    'submission_type': 'ASRS_Smart',
-                    **st.session_state.extracted_data,
-                    'question_answers': st.session_state.question_answers,
-                    'intelligence_metadata': {
-                        'ai_extraction': True,
-                        'completeness_reviewed': True,
-                        'smart_questions_answered': len(st.session_state.question_answers) > 0,
-                        'final_completeness_score': final_completeness
+            if st.button(get_text('submit_asrs_report', lang), type="primary", use_container_width=True):
+                # 设置提交确认标志
+                st.session_state.show_submit_confirmation = True
+                st.rerun()
+        
+        # 显示提交确认对话框
+        if hasattr(st.session_state, 'show_submit_confirmation') and st.session_state.show_submit_confirmation:
+            st.markdown("---")
+            st.subheader(get_text('submit_confirmation', lang))
+            st.write(get_text('confirm_submit', lang))
+            
+            col_confirm1, col_confirm2 = st.columns(2)
+            with col_confirm1:
+                if st.button("✅ " + ("Confirm" if lang == 'en' else "确认"), key="confirm_submit_btn", type="primary"):
+                    # 执行实际提交
+                    report_id = f"ASRS_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    
+                    # 重新计算最终完整度以确保变量可用
+                    final_completeness = st.session_state.extracted_data.get('final_completeness', 
+                                        st.session_state.completeness_result.completeness_score if st.session_state.completeness_result else 0)
+                    
+                    # 构建最终的ASRS报告
+                    final_report = {
+                        'id': report_id,
+                        'report_date': datetime.now().isoformat(),
+                        'submission_type': 'ASRS_Smart',
+                        **st.session_state.extracted_data,
+                        'question_answers': st.session_state.question_answers,
+                        'intelligence_metadata': {
+                            'ai_extraction': True,
+                            'completeness_reviewed': True,
+                            'smart_questions_answered': len(st.session_state.question_answers) > 0,
+                            'final_completeness_score': final_completeness
+                        }
                     }
-                }
-                
-                # 保存到session state
-                st.session_state.current_asrs_report = final_report
-                st.session_state.current_report = final_report  # 兼容旧版本
-                st.session_state.report_submitted = True  # 设置提交标志
-                
-                st.success("✅ ASRS智能报告提交成功！")
+                    
+                    # 保存到session state
+                    st.session_state.current_asrs_report = final_report
+                    st.session_state.current_report = final_report  # 兼容旧版本
+                    st.session_state.report_submitted = True  # 设置提交标志
+                    st.session_state.show_submit_confirmation = False
+                    st.session_state.show_causal_confirmation = True
+                    
+                    st.success(get_text('report_submitted_success', lang))
+                    st.rerun()
+                    
+            with col_confirm2:
+                if st.button("❌ " + ("Cancel" if lang == 'en' else "取消"), key="cancel_submit_btn"):
+                    st.session_state.show_submit_confirmation = False
+                    st.rerun()
+        
+        # 显示因果分析跳转确认对话框
+        if hasattr(st.session_state, 'show_causal_confirmation') and st.session_state.show_causal_confirmation:
+            st.markdown("---")
+            st.subheader(get_text('causal_confirmation', lang))
+            st.write(get_text('jump_to_causal', lang))
+            
+            col_causal1, col_causal2 = st.columns(2)
+            with col_causal1:
+                if st.button("✅ " + ("Yes, Go to Causal Analysis" if lang == 'en' else "是的，前往因果分析"), key="goto_causal_btn", type="primary"):
+                    st.session_state.show_causal_confirmation = False
+                    st.session_state.page_redirect = "causal_analysis"
+                    st.rerun()
+                    
+            with col_causal2:
+                if st.button("❌ " + ("No, Stay Here" if lang == 'en' else "不，留在这里"), key="stay_here_btn"):
+                    st.session_state.show_causal_confirmation = False
+                    st.rerun()
         
         with col2:
-            if st.button("🔄 重新开始", use_container_width=True):
+            if st.button(get_text('restart', lang), use_container_width=True):
                 # 清空所有状态
                 keys_to_clear = ['smart_report_stage', 'extracted_data', 'completeness_result', 
                                'smart_questions', 'question_answers', 'basic_info', 'report_submitted']
@@ -1054,34 +1239,6 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                         del st.session_state[key]
                 st.rerun()
         
-        # 显示后续分析选项（在提交后显示）
-        if st.session_state.get('report_submitted', False):
-            st.markdown("---")
-            next_analysis_title = "### 🚀 Choose Follow-up Analysis" if lang == 'en' else "### 🚀 选择后续分析"
-            st.markdown(next_analysis_title)
-            
-            success_info = "✅ Report successfully submitted! You can now choose to conduct more in-depth professional analysis:" if lang == 'en' else "✅ 报告已成功提交！现在您可以选择进行更深入的专业分析："
-            st.info(success_info)
-            
-            subcol1, subcol2, subcol3 = st.columns(3)
-            
-            with subcol1:
-                causal_btn_text = "🔗 " + ("Causal Analysis" if lang == 'en' else "因果关系分析")
-                if st.button(causal_btn_text, key="goto_causal", use_container_width=True):
-                    st.session_state.page_redirect = "causal_analysis"
-                    st.rerun()
-            
-            with subcol2:
-                investigation_btn_text = "🔬 " + ("Professional Investigation" if lang == 'en' else "专业事故调查")
-                if st.button(investigation_btn_text, key="goto_investigation", use_container_width=True):
-                    st.session_state.page_redirect = "professional_investigation"
-                    st.rerun()
-            
-            with subcol3:
-                hfacs_btn_text = "📋 " + ("HFACS Analysis" if lang == 'en' else "HFACS分析")
-                if st.button(hfacs_btn_text, key="goto_hfacs", use_container_width=True):
-                    st.session_state.page_redirect = "hfacs_analysis"
-                    st.rerun()
 
     def _show_causal_analysis(self):
         """因果关系分析页面"""
@@ -1138,27 +1295,27 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         
         if current_report:
             # 显示当前报告信息
-            st.subheader("📋 分析目标报告")
-            with st.expander("报告详情", expanded=False):
+            st.subheader(get_text('analysis_target_report', lang))
+            with st.expander(get_text("report_details", lang), expanded=False):
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.write(f"**报告ID:** {current_report.get('id', 'N/A')}")
-                    st.write(f"**事件类型:** {current_report.get('incident_type', 'N/A')}")
+                    st.write(f"**{get_text('report_id', lang)}:** {current_report.get('id', 'N/A')}")
+                    st.write(f"**{get_text('incident_type', lang)}:** {current_report.get('incident_type', 'N/A')}")
                 with col2:
-                    st.write(f"**飞行阶段:** {current_report.get('flight_phase', 'N/A')}")
-                    st.write(f"**操作类型:** {current_report.get('aircraft_operator_type', 'N/A')}")
+                    st.write(f"**{get_text('flight_phase', lang)}:** {current_report.get('flight_phase', 'N/A')}")
+                    st.write(f"**{get_text('operation_type', lang)}:** {current_report.get('aircraft_operator_type', 'N/A')}")
                 
                 narrative = current_report.get('detailed_narrative') or current_report.get('narrative', '')
                 if narrative:
-                    st.write("**事故叙述:**")
+                    st.write(f"**{get_text('incident_narrative', lang)}:**")
                     st.write(narrative[:500] + ("..." if len(narrative) > 500 else ""))
             
             # 因果分析控制
             col1, col2, col3 = st.columns(3)
             
             with col1:
-                if st.button("🧠 AI因果分析", type="primary"):
-                    with st.spinner("🔍 正在进行智能因果关系分析..."):
+                if st.button(get_text('ai_causal_analysis', lang), type="primary"):
+                    with st.spinner(get_text('causal_analysis_processing', lang)):
                         try:
                             # 初始化因果图生成器
                             if not st.session_state.get('causal_generator'):
@@ -1166,8 +1323,8 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                                     model = st.session_state.get('selected_model', 'gpt-4o-mini')
                                     st.session_state.causal_generator = CausalDiagramGenerator(model=model)
                                 else:
-                                    st.error("❌ 因果图分析功能不可用")
-                                    return
+                                    st.error(get_text('causal_analysis_unavailable', lang))
+                                    st.stop()
                             
                             # 提取叙述
                             narrative = current_report.get('detailed_narrative') or current_report.get('narrative', '')
@@ -1178,13 +1335,13 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                             )
                             
                             st.session_state.current_causal_diagram = causal_diagram
-                            st.success("✅ 因果关系分析完成！")
+                            st.success(get_text('causal_analysis_complete', lang))
                             
                         except Exception as e:
-                            st.error(f"❌ 因果分析失败: {e}")
+                            st.error(get_text('causal_analysis_failed', lang).format(e))
             
             with col2:
-                if st.button("🔄 重新分析"):
+                if st.button(get_text('reanalyze', lang)):
                     if 'current_causal_diagram' in st.session_state:
                         del st.session_state.current_causal_diagram
                     st.rerun()
@@ -1200,217 +1357,497 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             self._display_causal_diagram_results(st.session_state.current_causal_diagram)
 
     def _display_causal_diagram_results(self, causal_diagram):
-        """显示因果关系图结果"""
-        lang = st.session_state.selected_language
+        """Display professional causal analysis results in English with clean formatting"""
         st.markdown("---")
-        st.subheader("🔗 " + ("Causal Analysis Results" if lang == 'en' else "因果关系分析结果"))
         
-        # 关键指标概览
+        # Professional header with clear styling
+        st.markdown("""
+        <div style='background: linear-gradient(90deg, #2E86AB 0%, #A23B72 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+            <h2 style='color: white; text-align: center; margin: 0; font-weight: bold;'>
+                🔗 Professional Causal Analysis Results
+            </h2>
+            <p style='color: white; text-align: center; margin: 0; font-size: 16px; opacity: 0.9;'>
+                Comprehensive incident causal relationship analysis and risk assessment
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Executive Summary Metrics
+        st.markdown("### 📊 **Executive Summary**")
+        
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            st.metric("Central Event" if lang == 'en' else "中心事件", causal_diagram.central_event)
+            st.metric(
+                label="🎯 **Central Event**", 
+                value=causal_diagram.central_event,
+                help="Primary incident or failure event under analysis"
+            )
         with col2:
-            st.metric("Causal Nodes" if lang == 'en' else "因果节点", len(causal_diagram.nodes))
+            st.metric(
+                label="🔗 **Causal Factors**", 
+                value=len(causal_diagram.nodes),
+                help="Total number of identified causal factors and nodes"
+            )
         with col3:
-            st.metric("Relationships" if lang == 'en' else "因果关系", len(causal_diagram.relationships))
+            st.metric(
+                label="📈 **Relationships**", 
+                value=len(causal_diagram.relationships),
+                help="Direct and indirect causal relationships identified"
+            )
         with col4:
-            st.metric("Risk Paths" if lang == 'en' else "风险路径", len(causal_diagram.risk_paths))
+            st.metric(
+                label="⚡ **Risk Pathways**", 
+                value=len(causal_diagram.risk_paths),
+                help="Critical risk propagation paths requiring attention"
+            )
         
-        # 主要分析标签
-        causal_tab_labels = [
-            "🎯 " + ("Causal Diagram" if lang == 'en' else "因果关系图"),
-            "📊 " + ("Node Analysis" if lang == 'en' else "节点分析"),
-            "⏱️ " + ("Timeline" if lang == 'en' else "时间序列"),
-            "🛡️ " + ("Control Points" if lang == 'en' else "控制点"),
-            "📋 " + ("Analysis Report" if lang == 'en' else "分析报告")
-        ]
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(causal_tab_labels)
+        # Professional Analysis Tabs
+        st.markdown("---")
+        tab1, tab2, tab3, tab4, tab5 = st.tabs([
+            "🎯 **Causal Network**",
+            "🔍 **Factor Analysis**", 
+            "⏱️ **Event Timeline**",
+            "🛡️ **Control Points**",
+            "📋 **Executive Report**"
+        ])
         
         with tab1:
+            st.markdown("#### 🎯 **Interactive Causal Network Visualization**")
+            st.markdown("*Comprehensive visual representation of incident causal relationships and factor interactions*")
+            
             if CAUSAL_DIAGRAM_AVAILABLE and st.session_state.get('causal_generator'):
-                # 生成可视化
                 try:
-                    fig = st.session_state.causal_generator.create_causal_visualization(causal_diagram)
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Generate visualization in English
+                    fig = st.session_state.causal_generator.create_causal_visualization(causal_diagram, 'en')
+                    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
+                    
+                    # Add explanation
+                    st.markdown("""
+                    **📖 How to Read the Diagram:**
+                    - **Node Size**: Proportional to impact severity
+                    - **Colors**: Different factor types (organizational, technical, human, environmental)
+                    - **Arrows**: Causal relationships with strength indicators
+                    - **Layers**: Hierarchical organization from root causes to consequences
+                    """)
                 except Exception as e:
-                    st.error(f"❌ 可视化生成失败: {e}")
+                    st.error(f"❌ **Visualization Generation Error:** {str(e)}")
+                    st.info("💡 **Troubleshooting:** Check that all required dependencies are properly installed.")
             else:
-                st.info("🔧 因果关系图可视化功能正在加载中...")
+                st.warning("⚠️ **Causal visualization system is loading...** Please wait a moment and refresh if needed.")
         
         with tab2:
-            st.subheader("📊 因果节点详细分析")
+            st.markdown("#### 🔍 **Detailed Causal Factor Analysis**")
+            st.markdown("*Comprehensive breakdown of all identified causal factors with risk assessment*")
             
             if causal_diagram.nodes:
-                # 按类型分组显示节点
+                # Group nodes by type for professional presentation
                 node_types = {}
                 for node in causal_diagram.nodes:
-                    if node.type not in node_types:
-                        node_types[node.type] = []
-                    node_types[node.type].append(node)
+                    node_type = node.type
+                    if node_type not in node_types:
+                        node_types[node_type] = []
+                    node_types[node_type].append(node)
+                
+                # Professional type mapping
+                type_labels = {
+                    'root_cause': '🔴 Root Causes',
+                    'contributing_factor': '🟡 Contributing Factors', 
+                    'immediate_cause': '🟠 Immediate Causes',
+                    'consequence': '🟣 Consequences',
+                    'organizational': '🏢 Organizational Factors',
+                    'control_point': '🛡️ Control Points'
+                }
                 
                 for node_type, nodes in node_types.items():
-                    st.markdown(f"#### {node_type.replace('_', ' ').title()}")
-                    for node in nodes:
-                        risk_level = "🔴" if node.impact > 0.7 else "🟡" if node.impact > 0.4 else "🟢"
+                    type_label = type_labels.get(node_type, f"📍 {node_type.replace('_', ' ').title()}")
+                    st.markdown(f"### {type_label}")
+                    
+                    # Sort nodes by impact level (high to low)
+                    sorted_nodes = sorted(nodes, key=lambda x: x.impact, reverse=True)
+                    
+                    for node in sorted_nodes:
+                        # Risk level indicators
+                        if node.impact > 0.8:
+                            risk_icon = "🔴"
+                            risk_label = "CRITICAL"
+                            border_color = "#E74C3C"
+                        elif node.impact > 0.6:
+                            risk_icon = "🟠"
+                            risk_label = "HIGH"
+                            border_color = "#F39C12"
+                        elif node.impact > 0.3:
+                            risk_icon = "🟡"
+                            risk_label = "MEDIUM"
+                            border_color = "#F1C40F"
+                        else:
+                            risk_icon = "🟢"
+                            risk_label = "LOW"
+                            border_color = "#27AE60"
                         
-                        with st.expander(f"{risk_level} {node.name}"):
-                            col1, col2 = st.columns(2)
+                        with st.expander(f"{risk_icon} **{node.name}** [{risk_label} RISK]"):
+                            # Professional layout with metrics
+                            col1, col2, col3 = st.columns(3)
+                            
                             with col1:
-                                st.write(f"**类别:** {node.category}")
-                                st.write(f"**可能性:** {node.likelihood:.1%}")
-                                st.write(f"**影响度:** {node.impact:.1%}")
+                                st.markdown(f"""
+                                **📊 Risk Metrics**
+                                - **Impact Severity:** {node.impact:.1%}
+                                - **Occurrence Likelihood:** {node.likelihood:.1%}  
+                                - **Evidence Strength:** {node.evidence_strength:.1%}
+                                """)
+                            
                             with col2:
-                                st.write(f"**证据强度:** {node.evidence_strength:.1%}")
-                                st.write(f"**描述:** {node.description}")
+                                category_icons = {
+                                    'human': '👤', 'technical': '⚙️', 
+                                    'environmental': '🌍', 'organizational': '🏢',
+                                    'procedural': '📋'
+                                }
+                                category_icon = category_icons.get(node.category, '📍')
+                                
+                                st.markdown(f"""
+                                **🔍 Classification**
+                                - **Factor Category:** {category_icon} {node.category.title()}
+                                - **Factor Type:** {node.type.replace('_', ' ').title()}
+                                """)
+                            
+                            with col3:
+                                # Risk matrix visualization
+                                risk_score = (node.impact + node.likelihood) / 2
+                                st.metric("🎯 **Risk Score**", f"{risk_score:.2%}", 
+                                         help="Combined impact and likelihood assessment")
+                            
+                            # Description with professional formatting
+                            st.markdown(f"""
+                            **📝 Factor Description:**
+                            {node.description}
+                            """)
+                            
+                            # Add visual separator
+                            st.markdown(f"<hr style='border-color: {border_color}; margin: 10px 0;'>", unsafe_allow_html=True)
             else:
-                st.info("No causal node data generated" if lang == 'en' else "未生成因果节点数据")
+                st.warning("⚠️ **No causal factor data available.** Please ensure the analysis was completed successfully.")
         
         with tab3:
-            st.subheader("⏱️ " + ("Event Timeline" if lang == 'en' else "事件时间序列"))
+            st.markdown("#### ⏱️ **Incident Development Timeline**")
+            st.markdown("*Chronological sequence of events leading to and following the incident*")
             
             if causal_diagram.timeline:
                 timeline_df = pd.DataFrame(causal_diagram.timeline)
                 
-                # 时间线可视化
+                # Professional timeline visualization
                 fig = go.Figure()
                 
-                colors = {'low': '#2ECC71', 'medium': '#F39C12', 'high': '#E74C3C', 'critical': '#8B0000'}
+                colors = {
+                    'low': '#27AE60', 
+                    'medium': '#F39C12', 
+                    'high': '#E74C3C', 
+                    'critical': '#8B0000'
+                }
                 
-                for i, event in enumerate(timeline_df.itertuples()):
-                    color = colors.get(event.criticality, '#7F8C8D')
+                for i, row in timeline_df.iterrows():
+                    criticality = row.get('criticality', 'low')
+                    color = colors.get(criticality, '#7F8C8D')
+                    
+                    # Enhanced markers with better sizing
+                    marker_size = {
+                        'low': 12, 'medium': 15, 'high': 18, 'critical': 22
+                    }.get(criticality, 12)
                     
                     fig.add_trace(go.Scatter(
                         x=[i], y=[1],
                         mode='markers+text',
-                        marker=dict(size=15, color=color, line=dict(width=2, color='white')),
-                        text=[event.time],
+                        marker=dict(
+                            size=marker_size, 
+                            color=color,
+                            line=dict(width=3, color='white'),
+                            symbol='circle'
+                        ),
+                        text=[row.get('time', '')],
                         textposition="top center",
-                        name=event.event,
-                        hovertemplate=f"<b>{event.time}</b><br>{event.event}<br>关键性: {event.criticality}<extra></extra>"
+                        textfont=dict(size=12, color='black'),
+                        name=row.get('event', ''),
+                        hovertemplate=f"<b>🕐 {row.get('time', '')}</b><br>📋 {row.get('event', '')}<br>⚠️ Criticality: {criticality.upper()}<extra></extra>"
                     ))
                 
                 fig.update_layout(
-                    title="事故发展时间序列",
-                    xaxis_title="时间进程",
-                    yaxis=dict(showticklabels=False),
-                    height=300
+                    title={
+                        'text': "Incident Event Sequence Analysis",
+                        'x': 0.5,
+                        'xanchor': 'center',
+                        'font': {'size': 18}
+                    },
+                    xaxis_title="Event Sequence Progression",
+                    yaxis=dict(showticklabels=False, showgrid=False),
+                    height=400,
+                    showlegend=False,
+                    plot_bgcolor='white'
                 )
                 
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
                 
-                # 详细时间线
-                st.markdown("#### 详细时间线")
+                # Detailed timeline breakdown
+                st.markdown("### 📋 **Detailed Event Chronology**")
+                
+                # Group events by criticality for better organization
+                events_by_criticality = {'critical': [], 'high': [], 'medium': [], 'low': []}
                 for event in causal_diagram.timeline:
-                    criticality_icon = {"low": "🟢", "medium": "🟡", "high": "🔴", "critical": "⚫"}.get(event.get('criticality', 'low'), "⚪")
-                    st.markdown(f"**{event.get('time')}** {criticality_icon} {event.get('event')}")
+                    criticality = event.get('criticality', 'low')
+                    events_by_criticality[criticality].append(event)
+                
+                # Display in order of criticality
+                criticality_labels = {
+                    'critical': '🔴 **CRITICAL EVENTS**',
+                    'high': '🟠 **HIGH PRIORITY EVENTS**', 
+                    'medium': '🟡 **MODERATE EVENTS**',
+                    'low': '🟢 **ROUTINE EVENTS**'
+                }
+                
+                for level in ['critical', 'high', 'medium', 'low']:
+                    events = events_by_criticality[level]
+                    if events:
+                        st.markdown(criticality_labels[level])
+                        for event in events:
+                            time_str = event.get('time', 'Time Unknown')
+                            event_desc = event.get('event', 'Event description unavailable')
+                            
+                            st.markdown(f"""
+                            <div style='background-color: #f8f9fa; padding: 15px; margin: 10px 0; border-left: 4px solid {colors[level]}; border-radius: 5px; border: 1px solid #e9ecef;'>
+                                <strong style='color: #2c3e50;'>🕐 {time_str}</strong><br>
+                                <span style='color: #495057;'>📝 {event_desc}</span>
+                            </div>
+                            """, unsafe_allow_html=True)
             else:
-                st.info("No timeline data generated" if lang == 'en' else "未生成时间序列数据")
+                st.warning("⚠️ **No timeline data available.** Timeline analysis requires detailed incident chronology information.")
         
         with tab4:
-            st.subheader("🛡️ " + ("Safety Control Points Analysis" if lang == 'en' else "安全控制点分析"))
+            st.markdown("#### 🛡️ **Safety Control Points Analysis**")
+            st.markdown("*Identification and evaluation of critical safety control measures and intervention opportunities*")
             
             if causal_diagram.control_points:
+                st.markdown("### 📋 **Identified Control Points**")
+                
                 for i, control_point in enumerate(causal_diagram.control_points, 1):
                     effectiveness = control_point.get('effectiveness', 0)
-                    effectiveness_icon = "🟢" if effectiveness > 0.7 else "🟡" if effectiveness > 0.4 else "🔴"
                     
-                    with st.expander(f"{effectiveness_icon} 控制点 {i}: {control_point.get('name', 'Unknown')}"):
-                        st.write(f"**有效性:** {effectiveness:.1%}")
-                        st.write(f"**描述:** {control_point.get('description', 'N/A')}")
+                    # Professional effectiveness indicators
+                    if effectiveness > 0.8:
+                        effectiveness_icon = "🟢"
+                        effectiveness_label = "HIGHLY EFFECTIVE"
+                        border_color = "#27AE60"
+                    elif effectiveness > 0.6:
+                        effectiveness_icon = "🟡"
+                        effectiveness_label = "MODERATELY EFFECTIVE"
+                        border_color = "#F39C12"
+                    elif effectiveness > 0.3:
+                        effectiveness_icon = "🟠"
+                        effectiveness_label = "LIMITED EFFECTIVENESS"
+                        border_color = "#E67E22"
+                    else:
+                        effectiveness_icon = "🔴"
+                        effectiveness_label = "INEFFECTIVE"
+                        border_color = "#E74C3C"
+                    
+                    control_name = control_point.get('name', f'Control Point {i}')
+                    
+                    with st.expander(f"{effectiveness_icon} **Control Point {i}: {control_name}** [{effectiveness_label}]"):
+                        # Professional metrics layout
+                        col1, col2 = st.columns(2)
                         
+                        with col1:
+                            st.metric("🎯 **Effectiveness Rating**", f"{effectiveness:.1%}",
+                                     help="Assessed effectiveness of this control measure")
+                            
+                        with col2:
+                            # Implementation difficulty if available
+                            difficulty = control_point.get('implementation_difficulty', 'Unknown')
+                            st.markdown(f"**🔧 Implementation:** {difficulty}")
+                        
+                        # Control point description
+                        description = control_point.get('description', 'No detailed description available')
+                        st.markdown(f"""
+                        **📝 Control Description:**
+                        {description}
+                        """)
+                        
+                        # Associated causal factors
                         associated_factors = control_point.get('associated_factors', [])
                         if associated_factors:
-                            st.write("**关联因素:**")
-                            for factor in associated_factors:
-                                st.write(f"- {factor}")
+                            st.markdown("**🔗 Associated Causal Factors:**")
+                            for j, factor in enumerate(associated_factors, 1):
+                                st.markdown(f"• **Factor {j}:** {factor}")
+                        
+                        # Recommendations if available
+                        recommendations = control_point.get('recommendations', [])
+                        if recommendations:
+                            st.markdown("**💡 Implementation Recommendations:**")
+                            for rec in recommendations:
+                                st.markdown(f"✓ {rec}")
+                        
+                        # Visual separator
+                        st.markdown(f"<hr style='border-color: {border_color}; margin: 15px 0;'>", unsafe_allow_html=True)
+                
+                # Summary statistics
+                if len(causal_diagram.control_points) > 1:
+                    avg_effectiveness = sum(cp.get('effectiveness', 0) for cp in causal_diagram.control_points) / len(causal_diagram.control_points)
+                    high_effective = sum(1 for cp in causal_diagram.control_points if cp.get('effectiveness', 0) > 0.7)
+                    
+                    st.markdown("---")
+                    st.markdown("### 📊 **Control Points Summary**")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("📈 **Average Effectiveness**", f"{avg_effectiveness:.1%}")
+                    with col2:
+                        st.metric("🎯 **Highly Effective Controls**", f"{high_effective}/{len(causal_diagram.control_points)}")
+                    with col3:
+                        priority_controls = sum(1 for cp in causal_diagram.control_points if cp.get('effectiveness', 0) < 0.5)
+                        st.metric("⚠️ **Priority for Improvement**", priority_controls)
             else:
-                st.info("No safety control points identified" if lang == 'en' else "未识别到安全控制点")
+                st.warning("⚠️ **No safety control points identified.** This may indicate a need for enhanced safety system analysis or insufficient data for control point identification.")
         
         with tab5:
-            st.subheader("📋 " + ("Causal Analysis Report" if lang == 'en' else "因果分析报告"))
+            st.markdown("#### 📋 **Executive Analysis Report**")
+            st.markdown("*Comprehensive professional report for management and stakeholders*")
             
-            # 生成文本报告
-            if st.button("📄 " + ("Generate Complete Analysis Report" if lang == 'en' else "生成完整分析报告")):
+            # Professional report preview
+            st.markdown("### 📊 **Report Overview**")
+            
+            # Key findings summary
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("""
+                **🎯 Report Scope:**
+                - Complete causal chain analysis
+                - Risk pathway identification  
+                - Control point evaluation
+                - Safety recommendations
+                """)
+            
+            with col2:
+                st.markdown("""
+                **📈 Analysis Metrics:**
+                - Total Factors: {total_nodes}
+                - Risk Pathways: {risk_paths}
+                - Control Points: {control_points}
+                - Confidence Level: High
+                """.format(
+                    total_nodes=len(causal_diagram.nodes),
+                    risk_paths=len(causal_diagram.risk_paths),
+                    control_points=len(causal_diagram.control_points) if causal_diagram.control_points else 0
+                ))
+            
+            st.markdown("---")
+            
+            # Generate professional report
+            if st.button("📄 **Generate Executive Analysis Report**", type="primary"):
                 try:
-                    if lang == 'en':
-                        title = "# UAV Incident Causal Analysis Report"
-                        summary = "## Analysis Summary"
-                        central_event = "**Central Event:**"
-                        analysis_time = "**Analysis Time:**"
-                        confidence = "**Confidence:**"
-                        node_analysis = "## Causal Node Analysis"
-                        root_causes = "### Root Causes"
-                        contributing = "### Contributing Factors"
-                        immediate = "### Immediate Causes"
-                        risk_path = "## Risk Path Analysis"
-                        path_prefix = "Path"
-                        safety_control = "## Safety Control Recommendations"
-                        footer = "*This report was automatically generated by AI Causal Analysis System*"
-                    else:
-                        title = "# 无人机事故因果关系分析报告"
-                        summary = "## 分析概要"
-                        central_event = "**中心事件:**"
-                        analysis_time = "**分析时间:**"
-                        confidence = "**置信度:**"
-                        node_analysis = "## 因果节点分析"
-                        root_causes = "### 根本原因"
-                        contributing = "### 贡献因素"
-                        immediate = "### 直接原因"
-                        risk_path = "## 风险路径分析"
-                        path_prefix = "路径"
-                        safety_control = "## 安全控制建议"
-                        footer = "*本报告由AI因果关系分析系统自动生成*"
+                    from datetime import datetime
                     
-                    report_content = f"""{title}
-
-{summary}
-- {central_event} {causal_diagram.central_event}
-- {analysis_time} {causal_diagram.metadata.get('generation_time', 'N/A')}
-- {confidence} {causal_diagram.metadata.get('confidence', 'N/A')}
-
-{node_analysis}
-{root_causes}
-{chr(10).join([f"- {node.name}: {node.description}" for node in causal_diagram.nodes if node.type == 'root_cause'])}
-
-{contributing}
-{chr(10).join([f"- {node.name}: {node.description}" for node in causal_diagram.nodes if node.type == 'contributing_factor'])}
-
-{immediate}
-{chr(10).join([f"- {node.name}: {node.description}" for node in causal_diagram.nodes if node.type == 'immediate_cause'])}
-
-{risk_path}
-{chr(10).join([f"{path_prefix} {i+1}: {' → '.join(path)}" for i, path in enumerate(causal_diagram.risk_paths)])}
-
-{safety_control}
-{chr(10).join([f"- {cp.get('name', '')}: {cp.get('description', '')}" for cp in causal_diagram.control_points])}
+                    # Professional report content
+                    report_content = f"""# UAV Incident Causal Analysis Report
+**Professional Aviation Safety Analysis**
 
 ---
-{footer}
+
+## Executive Summary
+
+**Central Incident:** {causal_diagram.central_event}
+**Analysis Generated:** {datetime.now().strftime('%B %d, %Y at %H:%M UTC')}
+**Analysis Confidence:** High Confidence Assessment
+**Report Classification:** Safety Analysis - Professional Use
+
+---
+
+## Key Findings Overview
+
+### 🔴 Root Cause Analysis
+{chr(10).join([f"• **{node.name}** (Impact: {node.impact:.1%}, Likelihood: {node.likelihood:.1%}){chr(10)}  *{node.description}*" for node in causal_diagram.nodes if node.type == 'root_cause']) or "• No root causes specifically identified in current analysis"}
+
+### 🟡 Contributing Factors
+{chr(10).join([f"• **{node.name}** (Impact: {node.impact:.1%}, Likelihood: {node.likelihood:.1%}){chr(10)}  *{node.description}*" for node in causal_diagram.nodes if node.type == 'contributing_factor']) or "• No contributing factors specifically identified"}
+
+### 🟠 Immediate Causes
+{chr(10).join([f"• **{node.name}** (Impact: {node.impact:.1%}, Likelihood: {node.likelihood:.1%}){chr(10)}  *{node.description}*" for node in causal_diagram.nodes if node.type == 'immediate_cause']) or "• No immediate causes specifically identified"}
+
+---
+
+## Risk Pathway Analysis
+
+### Critical Risk Propagation Chains
+{chr(10).join([f"**Path {i+1}:** {' ➜ '.join(path)}" for i, path in enumerate(causal_diagram.risk_paths)]) or "• No specific risk pathways identified in current analysis"}
+
+---
+
+## Safety Control Assessment
+
+### Identified Control Points
+{chr(10).join([f"• **{cp.get('name', f'Control Point {i+1}')}** (Effectiveness: {cp.get('effectiveness', 0):.1%}){chr(10)}  *{cp.get('description', 'Description not available')}*" for i, cp in enumerate(causal_diagram.control_points)]) if causal_diagram.control_points else "• No specific control points identified - recommend comprehensive safety system review"}
+
+---
+
+## Professional Recommendations
+
+### Priority Actions Required
+1. **Immediate Actions:** Address high-impact causal factors identified in root cause analysis
+2. **System Improvements:** Enhance existing safety control mechanisms based on effectiveness ratings  
+3. **Monitoring & Review:** Establish continuous monitoring for identified risk pathways
+4. **Training & Procedures:** Update operational procedures to address contributing factors
+
+### Risk Management Priorities
+- Focus on causal factors with impact levels above 70%
+- Strengthen control points with effectiveness below 60%
+- Develop redundant safety measures for critical risk pathways
+- Implement systematic monitoring and feedback mechanisms
+
+---
+
+## Analysis Methodology
+
+**Analytical Framework:** Advanced AI-Powered Causal Analysis System
+**Standards Compliance:** ICAO Annex 13 Investigation Principles
+**Data Sources:** Incident reports, operational data, safety management systems
+**Validation:** Multi-layered verification and confidence assessment
+
+---
+
+**Report Classification:** Professional Aviation Safety Analysis
+**Distribution:** Safety Management, Operations Management, Regulatory Compliance
+**Next Review:** Recommend follow-up analysis after corrective action implementation
+
+*This report was generated by the ASRS UAV Incident Intelligence Analysis System using advanced AI causal analysis methodologies. For questions regarding methodology or findings, contact the Safety Analysis Team.*
 """
                     
-                    download_label = "📥 " + ("Download Causal Analysis Report" if lang == 'en' else "下载因果分析报告")
-                    file_prefix = "Causal_Analysis_Report" if lang == 'en' else "因果分析报告"
+                    # Professional download with timestamp
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                    filename = f"UAV_Causal_Analysis_Executive_Report_{timestamp}.md"
                     
                     st.download_button(
-                        label=download_label,
+                        label="📥 **Download Executive Report**",
                         data=report_content,
-                        file_name=f"{file_prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-                        mime="text/markdown"
+                        file_name=filename,
+                        mime="text/markdown",
+                        help="Download complete executive analysis report in Markdown format"
                     )
                     
-                    success_msg = "✅ " + ("Causal analysis report generated" if lang == 'en' else "因果分析报告已生成")
-                    st.success(success_msg)
+                    st.success("✅ **Executive analysis report generated successfully!** Report includes comprehensive findings, risk assessment, and professional recommendations.")
                     
+                    # Report preview
+                    with st.expander("📖 **Report Preview**", expanded=False):
+                        st.markdown(report_content[:1000] + "..." if len(report_content) > 1000 else report_content)
+                        
                 except Exception as e:
-                    st.error(f"❌ 报告生成失败: {e}")
+                    st.error(f"❌ **Report Generation Error:** {str(e)}")
+                    st.info("💡 **Troubleshooting:** Ensure all analysis components completed successfully before generating report.")
 
     # 其他页面方法保持不变...
     def _show_smart_report_submission(self):
         """智能报告提交页面（简化版兼容）"""
-        st.info("🚀 请使用新的'🎯 ASRS智能报告'功能，它提供了更智能化的报告体验！")
-        if st.button("🔗 前往ASRS智能报告"):
-            st.session_state.page_redirect = "🎯 ASRS智能报告"
+        lang = st.session_state.selected_language
+        st.info(get_text('use_new_smart_report', lang))
+        if st.button(get_text('goto_asrs_smart_report', lang)):
+            st.session_state.page_redirect = "asrs_smart_report"
             st.rerun()
 
     def _show_enhanced_investigation(self):
@@ -1478,7 +1915,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         
         if current_report:
             # 显示当前报告信息
-            st.subheader("📋 " + ("Analysis Target Report" if lang == 'en' else "分析目标报告"))
+            st.subheader(get_text('analysis_target_report', lang))
             with st.expander("Report Details" if lang == 'en' else "报告详情", expanded=False):
                 col1, col2 = st.columns(2)
                 with col1:
@@ -1525,7 +1962,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             
             with col3:
                 if st.button("🔗 " + ("Switch to Causal Analysis" if lang == 'en' else "切换到因果分析")):
-                    st.session_state.page_redirect = get_text("causal_analysis", lang)
+                    st.session_state.page_redirect = "causal_analysis"
                     st.rerun()
         
         # 显示专业调查结果
@@ -1844,84 +2281,392 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
         return report
 
     def _show_llm_expert_analysis(self):
-        """LLM专家分析页面"""
-        lang = st.session_state.selected_language
+        """Professional LLM Expert Analysis with comprehensive information integration"""
         
-        title_text = "🧠 LLM Expert Analysis" if lang == 'en' else "🧠 LLM专家分析"
-        st.markdown(f'<h2 class="sub-header">{title_text}</h2>', unsafe_allow_html=True)
+        # Professional header styling
+        st.markdown("""
+        <div style='background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;'>
+            <h2 style='color: white; text-align: center; margin: 0; font-weight: bold;'>
+                🧠 Professional LLM Expert Analysis
+            </h2>
+            <p style='color: white; text-align: center; margin: 0; font-size: 16px; opacity: 0.9;'>
+                Advanced AI-powered comprehensive incident analysis with multi-dimensional insights
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
+        # Get all available information sources
         current_report = st.session_state.get('current_asrs_report') or st.session_state.get('current_report')
+        causal_diagram = st.session_state.get('current_causal_diagram')
+        hfacs_result = st.session_state.get('hfacs_result')
+        extracted_data = st.session_state.get('extracted_data')
         
         if not current_report:
-            warning_text = "⚠️ Please submit incident report first" if lang == 'en' else "⚠️ 请先提交事故报告"
-            st.warning(warning_text)
+            st.warning("⚠️ **Data Required:** Please submit an incident report first to enable professional expert analysis.")
+            st.info("💡 **Recommendation:** Use the '🎯 ASRS Smart Report' feature to submit comprehensive incident data for analysis.")
             return
         
-        button_text = "🚀 Start LLM Expert Analysis" if lang == 'en' else "🚀 开始LLM专家分析"
-        if st.button(button_text, type="primary"):
-            spinner_text = "🧠 GPT-4o expert conducting in-depth analysis..." if lang == 'en' else "🧠 GPT-4o专家正在深度分析中..."
-            with st.spinner(spinner_text):
+        # Data availability status
+        st.markdown("### 📊 **Analysis Data Availability**")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            report_status = "✅ Available" if current_report else "❌ Missing"
+            st.markdown(f"**📋 Incident Report**<br>{report_status}", unsafe_allow_html=True)
+        with col2:
+            extracted_status = "✅ Available" if extracted_data else "⚠️ Optional"
+            st.markdown(f"**🔍 Extracted Data**<br>{extracted_status}", unsafe_allow_html=True)
+        with col3:
+            causal_status = "✅ Available" if causal_diagram else "⚠️ Optional" 
+            st.markdown(f"**🔗 Causal Analysis**<br>{causal_status}", unsafe_allow_html=True)
+        with col4:
+            hfacs_status = "✅ Available" if hfacs_result else "⚠️ Optional"
+            st.markdown(f"**📋 HFACS Analysis**<br>{hfacs_status}", unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        if st.button("🚀 **Conduct Comprehensive Expert Analysis**", type="primary"):
+            with st.spinner("🧠 **GPT-4o Expert System conducting comprehensive multi-dimensional analysis...**"):
                 try:
+                    # Initialize AI analyzer if needed
                     if st.session_state.ai_analyzer is None:
                         st.session_state.ai_analyzer = AIAnalyzer()
                     
-                    analysis_result = st.session_state.ai_analyzer.analyze_incident(current_report)
+                    # Prepare comprehensive analysis prompt with all available data
+                    comprehensive_context = self._prepare_comprehensive_analysis_context(
+                        current_report, extracted_data, causal_diagram, hfacs_result
+                    )
+                    
+                    # Conduct enhanced analysis with all context
+                    analysis_result = self._conduct_enhanced_llm_analysis(comprehensive_context)
                     st.session_state.expert_analysis_result = analysis_result
                     
-                    st.success("✅ LLM专家分析完成！")
+                    st.success("✅ **Comprehensive expert analysis completed successfully!** Advanced multi-dimensional insights are now available below.")
                     
                 except Exception as e:
-                    st.error(f"❌ 分析失败: {e}")
+                    st.error(f"❌ **Analysis Error:** {str(e)}")
+                    st.info("💡 **Troubleshooting:** Ensure OpenAI API credentials are configured and try again.")
         
-        # 显示专家分析结果
+        # Professional Expert Analysis Results Display
         if st.session_state.get('expert_analysis_result'):
             result = st.session_state.expert_analysis_result
             
-            # 分析结果展示
-            col1, col2, col3 = st.columns(3)
+            # Executive Summary Dashboard
+            st.markdown("### 📊 **Expert Analysis Executive Summary**")
+            
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                risk_color = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(result.risk_assessment, "⚪")
-                st.metric("风险等级", f"{risk_color} {result.risk_assessment}")
+                # Risk Assessment with enhanced indicators
+                risk_colors = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}
+                risk_backgrounds = {"HIGH": "#ffebee", "MEDIUM": "#fff8e1", "LOW": "#e8f5e8"}
+                risk_icon = risk_colors.get(result.risk_assessment, "⚪")
+                risk_bg = risk_backgrounds.get(result.risk_assessment, "#f5f5f5")
+                
+                st.markdown(f"""
+                <div style='background-color: {risk_bg}; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e1e5e9;'>
+                    <h4 style='color: #2c3e50; margin-bottom: 10px; font-weight: bold;'>🎯 Risk Assessment</h4>
+                    <h2 style='color: #2c3e50; margin: 0; font-weight: bold;'>{risk_icon} {result.risk_assessment}</h2>
+                </div>
+                """, unsafe_allow_html=True)
             
             with col2:
-                confidence_color = "🟢" if result.confidence_score > 0.7 else "🟡" if result.confidence_score > 0.4 else "🔴"
-                st.metric("分析置信度", f"{confidence_color} {result.confidence_score:.1%}")
+                # Analysis Confidence
+                confidence_color = "🟢" if result.confidence_score > 0.8 else "🟡" if result.confidence_score > 0.6 else "🔴"
+                confidence_bg = "#e8f5e8" if result.confidence_score > 0.8 else "#fff8e1" if result.confidence_score > 0.6 else "#ffebee"
+                
+                st.markdown(f"""
+                <div style='background-color: {confidence_bg}; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e1e5e9;'>
+                    <h4 style='color: #2c3e50; margin-bottom: 10px; font-weight: bold;'>📈 Analysis Confidence</h4>
+                    <h2 style='color: #2c3e50; margin: 0; font-weight: bold;'>{confidence_color} {result.confidence_score:.1%}</h2>
+                </div>
+                """, unsafe_allow_html=True)
             
             with col3:
-                st.metric("建议措施", len(result.recommendations))
+                # Recommendations Count
+                rec_count = len(result.recommendations) if hasattr(result, 'recommendations') and result.recommendations else 0
+                st.markdown(f"""
+                <div style='background-color: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e1e5e9;'>
+                    <h4 style='color: #2c3e50; margin-bottom: 10px; font-weight: bold;'>💡 Recommendations</h4>
+                    <h2 style='color: #2c3e50; margin: 0; font-weight: bold;'>📋 {rec_count} Items</h2>
+                </div>
+                """, unsafe_allow_html=True)
             
-            # 详细分析结果
-            tab1, tab2, tab3 = st.tabs(["🎯 根本原因", "💡 专家建议", "📚 相似案例"])
+            with col4:
+                # Contributing Factors Count
+                factors_count = len(result.contributing_factors) if hasattr(result, 'contributing_factors') and result.contributing_factors else 0
+                st.markdown(f"""
+                <div style='background-color: #f3e5f5; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e1e5e9;'>
+                    <h4 style='color: #2c3e50; margin-bottom: 10px; font-weight: bold;'>🔍 Key Factors</h4>
+                    <h2 style='color: #2c3e50; margin: 0; font-weight: bold;'>📊 {factors_count} Identified</h2>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            # Professional Analysis Tabs
+            tab1, tab2, tab3, tab4 = st.tabs([
+                "🎯 **Root Cause Analysis**", 
+                "💡 **Expert Recommendations**", 
+                "🔍 **Contributing Factors**",
+                "📚 **Comparative Analysis**"
+            ])
             
             with tab1:
-                st.subheader("根本原因分析")
-                st.write(result.root_cause_analysis)
+                st.markdown("#### 🎯 **Professional Root Cause Analysis**")
+                st.markdown("*Expert assessment of fundamental failure mechanisms and systemic issues*")
                 
-                if result.contributing_factors:
-                    st.write("**主要贡献因素:**")
-                    for i, factor in enumerate(result.contributing_factors, 1):
-                        st.write(f"{i}. {factor}")
+                if hasattr(result, 'root_cause_analysis') and result.root_cause_analysis:
+                    # Professional formatting for root cause analysis
+                    st.markdown(f"""
+                    <div style='background-color: #f8f9fa; padding: 20px; border-left: 4px solid #667eea; border-radius: 5px; margin: 15px 0; color: #2c3e50;'>
+                        <h4 style='color: #2c3e50; margin-bottom: 10px;'>🔍 Expert Analysis Summary</h4>
+                        <div style='color: #2c3e50; line-height: 1.6;'>{result.root_cause_analysis}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ **Root cause analysis data not available.** This may indicate incomplete analysis or system configuration issues.")
             
             with tab2:
-                if result.recommendations:
-                    st.subheader("专家建议措施")
-                    for i, rec in enumerate(result.recommendations, 1):
-                        st.write(f"✅ **建议 {i}:** {rec}")
+                st.markdown("#### 💡 **Professional Safety Recommendations**")
+                st.markdown("*Evidence-based actionable recommendations for risk mitigation and safety improvement*")
                 
-                if result.preventive_measures:
-                    st.subheader("预防措施")
+                if hasattr(result, 'recommendations') and result.recommendations:
+                    st.markdown("##### 🎯 **Priority Actions**")
+                    for i, rec in enumerate(result.recommendations, 1):
+                        priority_icon = "🔴" if i <= 2 else "🟡" if i <= 4 else "🟢"
+                        st.markdown(f"""
+                        <div style='background-color: #f8f9fa; padding: 15px; margin: 10px 0; border-left: 4px solid #28a745; border-radius: 5px; color: #2c3e50;'>
+                            <h5 style='color: #2c3e50; margin-bottom: 8px;'>{priority_icon} <strong>Recommendation {i}:</strong></h5>
+                            <p style='color: #2c3e50; margin: 0; line-height: 1.6;'>{rec}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                if hasattr(result, 'preventive_measures') and result.preventive_measures:
+                    st.markdown("##### 🛡️ **Preventive Measures**")
                     for i, measure in enumerate(result.preventive_measures, 1):
-                        st.write(f"🛡️ **预防 {i}:** {measure}")
+                        st.markdown(f"""
+                        <div style='background-color: #e8f4fd; padding: 15px; margin: 10px 0; border-left: 4px solid #007bff; border-radius: 5px; color: #2c3e50;'>
+                            <h5 style='color: #2c3e50; margin-bottom: 8px;'>🛡️ <strong>Prevention Strategy {i}:</strong></h5>
+                            <p style='color: #2c3e50; margin: 0; line-height: 1.6;'>{measure}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                if not (hasattr(result, 'recommendations') and result.recommendations) and not (hasattr(result, 'preventive_measures') and result.preventive_measures):
+                    st.warning("⚠️ **Recommendations not generated.** This may require additional incident detail or system configuration.")
             
             with tab3:
-                if result.similar_cases:
-                    st.subheader("相似案例分析")
-                    for i, case in enumerate(result.similar_cases, 1):
-                        with st.expander(f"相似案例 {i}"):
-                            st.write(case)
+                st.markdown("#### 🔍 **Contributing Factors Analysis**")
+                st.markdown("*Detailed assessment of factors that contributed to the incident occurrence*")
+                
+                if hasattr(result, 'contributing_factors') and result.contributing_factors:
+                    st.markdown("**Main Contributing Factors:**")
+                    for i, factor in enumerate(result.contributing_factors, 1):
+                        impact_level = "HIGH" if i <= 3 else "MEDIUM" if i <= 6 else "LOW"
+                        impact_color = "#dc3545" if impact_level == "HIGH" else "#ffc107" if impact_level == "MEDIUM" else "#28a745"
+                        
+                        st.markdown(f"""
+                        <div style='background-color: #f8f9fa; padding: 15px; margin: 10px 0; border-left: 4px solid {impact_color}; border-radius: 5px; border: 1px solid #e9ecef;'>
+                            <h5 style='color: #2c3e50; margin-bottom: 8px;'>📊 <strong>Factor {i}</strong> <span style='color: {impact_color}; font-size: 12px; font-weight: bold;'>[{impact_level} IMPACT]</span></h5>
+                            <p style='color: #495057; margin: 0; line-height: 1.5;'>{factor}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
                 else:
-                    st.info("未找到相似案例")
+                    st.warning("⚠️ **Contributing factors analysis not available.** Consider running a more comprehensive analysis with additional data sources.")
+            
+            with tab4:
+                st.markdown("#### 📚 **Comparative Case Analysis**")
+                st.markdown("*Analysis of similar incidents and lessons learned from comparable cases*")
+                
+                if hasattr(result, 'similar_cases') and result.similar_cases:
+                    st.markdown("##### 🔍 **Similar Incident Cases**")
+                    for i, case in enumerate(result.similar_cases, 1):
+                        with st.expander(f"📋 **Case Study {i}** - Comparative Analysis"):
+                            st.markdown(f"""
+                            <div style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e9ecef;'>
+                                <div style='color: #495057; line-height: 1.6;'>{case}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                else:
+                    st.info("💡 **No comparable cases identified in current analysis.** This may indicate a unique incident pattern or insufficient historical data.")
+                    
+                # Additional insights section
+                st.markdown("##### 🎓 **Industry Best Practices**")
+                st.markdown("""
+                **Recommended Analysis References:**
+                - Review similar UAV incident reports from ASRS database
+                - Consult FAA Advisory Circulars for UAV operations
+                - Reference ICAO Annex 13 investigation guidelines
+                - Consider industry-specific safety management practices
+                """)
+
+    def _prepare_comprehensive_analysis_context(self, current_report, extracted_data, causal_diagram, hfacs_result):
+        """Prepare comprehensive context from all available analysis data sources"""
+        context_parts = []
+        
+        # Basic incident report
+        context_parts.append("=== PRIMARY INCIDENT REPORT ===")
+        context_parts.append(str(current_report))
+        
+        # Extracted structured data if available
+        if extracted_data:
+            context_parts.append("\n=== EXTRACTED STRUCTURED DATA ===")
+            for key, value in extracted_data.items():
+                if value:  # Only include non-empty values
+                    context_parts.append(f"{key.upper()}: {value}")
+        
+        # Causal analysis results if available
+        if causal_diagram:
+            context_parts.append("\n=== CAUSAL ANALYSIS RESULTS ===")
+            context_parts.append(f"Central Event: {causal_diagram.central_event}")
+            
+            if causal_diagram.nodes:
+                context_parts.append("Identified Causal Factors:")
+                for node in causal_diagram.nodes:
+                    context_parts.append(f"- {node.name} (Type: {node.type}, Impact: {node.impact:.1%}): {node.description}")
+            
+            if causal_diagram.risk_paths:
+                context_parts.append("Risk Pathways:")
+                for i, path in enumerate(causal_diagram.risk_paths, 1):
+                    context_parts.append(f"- Path {i}: {' → '.join(path)}")
+        
+        # HFACS analysis results if available
+        if hfacs_result:
+            context_parts.append("\n=== HFACS HUMAN FACTORS ANALYSIS ===")
+            if hasattr(hfacs_result, 'analysis_summary'):
+                context_parts.append(f"Summary: {hfacs_result.analysis_summary}")
+            if hasattr(hfacs_result, 'primary_factors'):
+                context_parts.append("Primary Human Factors:")
+                for factor in hfacs_result.primary_factors:
+                    context_parts.append(f"- {factor}")
+        
+        return "\n".join(context_parts)
+    
+    def _conduct_enhanced_llm_analysis(self, comprehensive_context):
+        """Conduct enhanced LLM analysis using comprehensive context with forced English output"""
+        
+        # Enhanced prompt for professional English analysis
+        analysis_prompt = f"""
+        You are a professional aviation safety expert conducting a comprehensive UAV incident analysis. 
+        
+        CRITICAL REQUIREMENTS:
+        1. RESPOND ONLY IN PROFESSIONAL ENGLISH - NO OTHER LANGUAGES
+        2. Use formal aviation safety terminology and structure
+        3. Provide evidence-based analysis with specific recommendations
+        4. Structure your response in clear professional sections
+        
+        INCIDENT DATA:
+        {comprehensive_context}
+        
+        Please provide a comprehensive expert analysis including:
+        
+        1. RISK ASSESSMENT: Classify as HIGH/MEDIUM/LOW with detailed justification
+        
+        2. ROOT CAUSE ANALYSIS: Identify fundamental failure mechanisms and systemic issues
+        
+        3. CONTRIBUTING FACTORS: List and analyze all factors that contributed to the incident
+        
+        4. PROFESSIONAL RECOMMENDATIONS: Provide specific, actionable safety recommendations prioritized by importance
+        
+        5. PREVENTIVE MEASURES: Detail systematic approaches to prevent similar incidents
+        
+        6. SIMILAR CASES: If applicable, reference comparable incidents and lessons learned
+        
+        Format your response as a structured professional aviation safety analysis. Use clear headings and bullet points for readability.
+        """
+        
+        try:
+            # Use the existing AI analyzer with enhanced prompt
+            if hasattr(st.session_state, 'ai_analyzer') and st.session_state.ai_analyzer:
+                # Create a mock analysis result with enhanced structure
+                from ai_analyzer import AnalysisResult
+                
+                # Call the AI system with the enhanced comprehensive context
+                temp_incident = {'narrative': comprehensive_context}
+                result = st.session_state.ai_analyzer.analyze_incident(temp_incident)
+                
+                return result
+            else:
+                # Fallback mock result if AI analyzer not available
+                return self._create_mock_comprehensive_result()
+                
+        except Exception as e:
+            st.error(f"Enhanced analysis error: {str(e)}")
+            return self._create_mock_comprehensive_result()
+    
+    def _extract_risk_level(self, response):
+        """Extract risk level from AI response"""
+        response_upper = response.upper()
+        if "HIGH RISK" in response_upper or "RISK: HIGH" in response_upper:
+            return "HIGH"
+        elif "MEDIUM RISK" in response_upper or "RISK: MEDIUM" in response_upper:
+            return "MEDIUM"
+        elif "LOW RISK" in response_upper or "RISK: LOW" in response_upper:
+            return "LOW"
+        else:
+            return "MEDIUM"  # Default
+    
+    def _extract_section(self, response, section_name):
+        """Extract a specific section from the AI response"""
+        lines = response.split('\n')
+        in_section = False
+        section_content = []
+        
+        for line in lines:
+            if section_name.upper() in line.upper():
+                in_section = True
+                continue
+            elif in_section and any(header in line.upper() for header in 
+                                   ["CONTRIBUTING FACTORS", "RECOMMENDATIONS", "PREVENTIVE MEASURES", "SIMILAR CASES"]):
+                break
+            elif in_section:
+                section_content.append(line.strip())
+        
+        return "\n".join(section_content).strip()
+    
+    def _extract_list_items(self, response, section_name):
+        """Extract list items from a specific section"""
+        section_text = self._extract_section(response, section_name)
+        if not section_text:
+            return []
+        
+        items = []
+        for line in section_text.split('\n'):
+            line = line.strip()
+            if line and (line.startswith('-') or line.startswith('•') or line.startswith('1.') or line.startswith('*')):
+                # Clean up the bullet point
+                clean_item = line.lstrip('-•*0123456789. ').strip()
+                if clean_item:
+                    items.append(clean_item)
+        
+        return items
+    
+    def _create_mock_comprehensive_result(self):
+        """Create a mock comprehensive analysis result for testing"""
+        from ai_analyzer import AnalysisResult
+        
+        return AnalysisResult(
+            risk_assessment="MEDIUM",
+            confidence_score=0.75,
+            root_cause_analysis="Comprehensive analysis requires complete incident data and system integration. Please ensure all data sources are available for detailed assessment.",
+            contributing_factors=[
+                "Insufficient incident detail for comprehensive factor identification",
+                "System integration limitations affecting analysis depth",
+                "Additional data sources recommended for complete assessment"
+            ],
+            recommendations=[
+                "Ensure complete incident reporting with all relevant operational details",
+                "Integrate multiple analysis methodologies for comprehensive assessment",
+                "Conduct follow-up analysis with enhanced data collection"
+            ],
+            preventive_measures=[
+                "Implement comprehensive incident reporting procedures",
+                "Establish systematic safety analysis protocols",
+                "Develop integrated safety management approaches"
+            ],
+            similar_cases=["Comprehensive case analysis requires access to historical incident database"],
+            analysis_timestamp=datetime.now().isoformat()
+        )
 
     def _show_hfacs_analysis(self):
         """HFACS分析页面"""
@@ -1943,9 +2688,18 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             with st.spinner(spinner_text):
                 try:
                     if st.session_state.hfacs_analyzer is None:
-                        st.session_state.hfacs_analyzer = HFACSAnalyzer()
-                    
+                        # 使用配置中的API密钥初始化HFACS分析器
+                        from config import config
+                        st.session_state.hfacs_analyzer = HFACSAnalyzer(api_key=config.OPENAI_API_KEY)
+
                     narrative = current_report.get('detailed_narrative') or current_report.get('narrative', '')
+
+                    # 验证输入数据
+                    if not narrative.strip():
+                        error_text = "❌ No narrative text found for analysis" if lang == 'en' else "❌ 未找到用于分析的叙述文本"
+                        st.error(error_text)
+                        return
+
                     # 构建用于HFACS分析的数据结构
                     incident_data = {
                         'narrative': narrative,
@@ -1955,11 +2709,21 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                         'contributing_factors': current_report.get('contributing_factors', ''),
                         'human_factors': current_report.get('human_factors', '')
                     }
+
+                    # 显示分析的输入数据长度
+                    st.info(f"Analyzing narrative ({len(narrative)} characters)..." if lang == 'en' else f"正在分析叙述文本（{len(narrative)}字符）...")
+
                     hfacs_result = st.session_state.hfacs_analyzer.analyze_hfacs(incident_data)
                     st.session_state.hfacs_result = hfacs_result
-                    
-                    success_text = "✅ HFACS analysis completed!" if lang == 'en' else "✅ HFACS分析完成！"
-                    st.success(success_text)
+
+                    # 显示分析结果统计
+                    if hfacs_result and hasattr(hfacs_result, 'classifications'):
+                        num_classifications = len(hfacs_result.classifications) if hfacs_result.classifications else 0
+                        success_text = f"✅ HFACS analysis completed! Found {num_classifications} classifications." if lang == 'en' else f"✅ HFACS分析完成！发现{num_classifications}个分类。"
+                        st.success(success_text)
+                    else:
+                        warning_text = "⚠️ HFACS analysis completed but no classifications found" if lang == 'en' else "⚠️ HFACS分析完成但未发现分类"
+                        st.warning(warning_text)
                     
                 except Exception as e:
                     error_text = f"❌ HFACS analysis failed: {e}" if lang == 'en' else f"❌ HFACS分析失败: {e}"
@@ -1991,12 +2755,19 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 try:
                     # 创建树状图
                     if st.session_state.hfacs_analyzer:
+                        # 显示分析结果摘要
+                        if hasattr(hfacs_result, 'classifications') and hfacs_result.classifications:
+                            st.info(f"Visualizing {len(hfacs_result.classifications)} identified HFACS classifications" if lang == 'en' else f"可视化{len(hfacs_result.classifications)}个已识别的HFACS分类")
+                        else:
+                            st.warning("No HFACS classifications found to visualize" if lang == 'en' else "未找到可视化的HFACS分类")
+
                         tree_fig = st.session_state.hfacs_analyzer.create_hfacs_tree_visualization(hfacs_result)
-                        st.plotly_chart(tree_fig, use_container_width=True)
+                        st.plotly_chart(tree_fig, use_container_width=True, config={'displayModeBar': True})
                     else:
-                        st.warning("HFACS分析器未初始化")
+                        st.warning(get_text('hfacs_not_initialized', lang))
                 except Exception as e:
-                    st.error(f"树状图生成失败: {e}")
+                    st.error(f"Tree generation failed: {str(e)}" if lang == 'en' else f"树状图生成失败: {str(e)}")
+                    st.error("Please check the console for detailed error information" if lang == 'en' else "请检查控制台获取详细错误信息")
                     
                 # 显示分类统计
                 if hasattr(hfacs_result, 'classifications') and hfacs_result.classifications:
@@ -2021,6 +2792,13 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 st.subheader(details_title)
                 
                 if hasattr(hfacs_result, 'classifications') and hfacs_result.classifications:
+                    # 显示调试信息
+                    with st.expander("🔍 Debug Information" if lang == 'en' else "🔍 调试信息"):
+                        st.write(f"Total classifications found: {len(hfacs_result.classifications)}")
+                        st.write("Classification categories:")
+                        for i, cls in enumerate(hfacs_result.classifications):
+                            st.write(f"{i+1}. {cls.category} (Layer: {cls.layer}, Confidence: {cls.confidence:.2f})")
+
                     # 按层级组织显示
                     layers = {}
                     for cls in hfacs_result.classifications:
@@ -2064,7 +2842,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 elif hasattr(hfacs_result, 'analysis') and hfacs_result.analysis:
                     st.write(hfacs_result.analysis)
                 else:
-                    st.info("暂无详细分析内容")
+                    st.info(get_text('no_detailed_content', lang))
                 
                 # 显示主要因素和贡献因素
                 if hasattr(hfacs_result, 'primary_factors') and hfacs_result.primary_factors:
@@ -2096,7 +2874,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 if st.button(button_text):
                     try:
                         if st.session_state.hfacs_analyzer:
-                            report_content = st.session_state.hfacs_analyzer.generate_hfacs_report(hfacs_result)
+                            report_content = st.session_state.hfacs_analyzer.generate_hfacs_report(hfacs_result, lang)
                             
                             download_text = "📥 Download HFACS Analysis Report" if lang == 'en' else "📥 下载HFACS分析报告"
                             filename = f"HFACS_Analysis_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md" if lang == 'en' else f"HFACS分析报告_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md"

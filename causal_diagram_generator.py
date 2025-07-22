@@ -1,6 +1,6 @@
 """
-因果图自动生成器
-基于事故叙述自动生成因果关系图，用于事故调查和根因分析
+Causal Diagram Automatic Generator
+Automatically generate causal relationship diagrams based on incident narratives for accident investigation and root cause analysis
 """
 
 import requests
@@ -16,13 +16,14 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import networkx as nx
 import numpy as np
+from translations import get_text
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @dataclass
 class CausalNode:
-    """因果关系节点"""
+    """Causal Relationship Node"""
     id: str
     name: str
     type: str  # 'root_cause', 'contributing_factor', 'immediate_cause', 'consequence'
@@ -34,7 +35,7 @@ class CausalNode:
 
 @dataclass
 class CausalRelationship:
-    """因果关系连接"""
+    """Causal Relationship Connection"""
     from_node: str
     to_node: str
     relationship_type: str  # 'direct_cause', 'contributing_cause', 'enabling_condition'
@@ -44,37 +45,37 @@ class CausalRelationship:
 
 @dataclass
 class CausalDiagram:
-    """因果关系图"""
+    """Causal Relationship Diagram"""
     nodes: List[CausalNode]
     relationships: List[CausalRelationship]
     central_event: str
     timeline: List[Dict[str, Any]]
-    risk_paths: List[List[str]]  # 风险传播路径
-    control_points: List[Dict[str, Any]]  # 控制点
+    risk_paths: List[List[str]]  # Risk propagation paths
+    control_points: List[Dict[str, Any]]  # Control points
     metadata: Dict[str, Any]
 
 class CausalDiagramGenerator:
-    """因果图生成器"""
+    """Causal Diagram Generator"""
     
     def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
         """
-        初始化因果图生成器
+        Initialize Causal Diagram Generator
         
         Args:
-            api_key: OpenAI API密钥
-            model: 使用的模型 (gpt-4o 或 gpt-4o-mini)
+            api_key: OpenAI API key
+            model: Model to use (gpt-4o or gpt-4o-mini)
         """
         self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
         self.model = model
         self.use_mock = not bool(self.api_key)
         
-        # 定义节点类别颜色
+        # Define node category colors
         self.node_colors = {
-            'root_cause': '#e74c3c',        # 红色 - 根本原因
-            'contributing_factor': '#f39c12', # 橙色 - 贡献因素  
-            'immediate_cause': '#e67e22',    # 深橙色 - 直接原因
-            'consequence': '#9b59b6',        # 紫色 - 后果
-            'control_point': '#27ae60'       # 绿色 - 控制点
+            'root_cause': '#e74c3c',        # Red - Root cause
+            'contributing_factor': '#f39c12', # Orange - Contributing factor  
+            'immediate_cause': '#e67e22',    # Dark orange - Immediate cause
+            'consequence': '#9b59b6',        # Purple - Consequence
+            'control_point': '#27ae60'       # Green - Control point
         }
         
         # 定义类别颜色
@@ -664,7 +665,7 @@ Identify specific, actionable intervention points that could break the causal ch
             }
         )
     
-    def create_causal_visualization(self, diagram: CausalDiagram) -> go.Figure:
+    def create_causal_visualization(self, diagram: CausalDiagram, lang: str = 'zh') -> go.Figure:
         """创建因果图可视化"""
         
         if not diagram.nodes:
@@ -751,24 +752,20 @@ Identify specific, actionable intervention points that could break the causal ch
                 )
                 
                 # 添加关系类型标签
-                rel_type_label = {
-                    'direct_cause': '直接导致',
-                    'contributing_cause': '贡献因素',
-                    'enabling_condition': '使能条件'
-                }.get(rel.relationship_type, rel.relationship_type)
+                rel_type_label = get_text(rel.relationship_type, lang) if rel.relationship_type in ['direct_cause', 'contributing_cause', 'enabling_condition'] else rel.relationship_type
                 
                 fig.add_annotation(
                     x=mid_x, y=mid_y,
-                    text=f"{rel_type_label}<br>({rel.strength:.1f})",
+                    text=f"<b>{rel_type_label}</b><br>({rel.strength:.1f})",
                     showarrow=False,
-                    font=dict(size=8, color=line_color),
+                    font=dict(size=12, color=line_color, family="Arial Black"),
                     bgcolor="white",
                     bordercolor=line_color,
                     borderwidth=1,
                     xref='x', yref='y'
                 )
         
-        # 绘制节点
+        # Draw nodes
         for node in diagram.nodes:
             if node.id in pos:
                 x, y = pos[node.id]
@@ -800,16 +797,16 @@ Identify specific, actionable intervention points that could break the causal ch
                     ),
                     text=node.name,
                     textposition="bottom center",
-                    textfont=dict(size=10, color='#2c3e50'),
+                    textfont=dict(size=14, color='#2c3e50', family="Arial Black"),
                     name=node.type,
                     showlegend=False,
                     hovertemplate=(
                         f"<b>{node.name}</b><br>"
-                        f"类型: {node.type}<br>"
-                        f"类别: {node.category}<br>"
-                        f"可能性: {node.likelihood:.1%}<br>"
-                        f"影响度: {node.impact:.1%}<br>"
-                        f"证据强度: {node.evidence_strength:.1%}<br>"
+                        f"{get_text('type', lang)}: {get_text(node.type, lang)}<br>"
+                        f"{get_text('category', lang)}: {get_text(node.category, lang)}<br>"
+                        f"{get_text('likelihood', lang)}: {node.likelihood:.1%}<br>"
+                        f"{get_text('impact', lang)}: {node.impact:.1%}<br>"
+                        f"{get_text('evidence_strength', lang)}: {node.evidence_strength:.1%}<br>"
                         f"{node.description}"
                         "<extra></extra>"
                     )
@@ -831,11 +828,11 @@ Identify specific, actionable intervention points that could break the causal ch
         
         # 添加层级标签
         layer_labels = [
-            ("组织影响因素", 4),
-            ("根本原因", 3), 
-            ("贡献因素", 2),
-            ("直接原因", 1),
-            ("事故后果", 0)
+            (get_text("organizational_influences", lang), 4),
+            (get_text("root_cause", lang), 3), 
+            (get_text("contributing_factors", lang), 2),
+            (get_text("direct_causes", lang), 1),
+            (get_text("incident_consequences", lang), 0)
         ]
         
         for label, y_pos in layer_labels:
@@ -843,14 +840,14 @@ Identify specific, actionable intervention points that could break the causal ch
                 x=-5, y=y_pos,
                 text=f"<b>{label}</b>",
                 showarrow=False,
-                font=dict(size=12, color='#2c3e50'),
+                font=dict(size=16, color='#2c3e50', family="Arial Black"),
                 xref='x', yref='y',
                 xanchor='right'
             )
         
         fig.update_layout(
             title={
-                'text': f"🔗 专业事故因果关系分析图<br><sub>{diagram.central_event}</sub>",
+                'text': f"🔗 Professional Incident Causal Analysis Diagram<br><sub>{diagram.central_event}</sub>",
                 'x': 0.5,
                 'xanchor': 'center',
                 'font': {'size': 16, 'color': '#2c3e50'}
@@ -875,7 +872,7 @@ Identify specific, actionable intervention points that could break the causal ch
                 y=1,
                 xanchor="left", 
                 x=1.01,
-                title="节点类型"
+                title="Node Type"
             ),
             plot_bgcolor='white',
             paper_bgcolor='#f8f9fa'
@@ -884,7 +881,7 @@ Identify specific, actionable intervention points that could break the causal ch
         return fig
     
     def _create_hierarchical_layout(self, diagram: CausalDiagram, G) -> dict:
-        """创建符合事故调查逻辑的层次化布局"""
+        """Create hierarchical layout that follows incident investigation logic"""
         
         # 按类型分层，从上到下：组织因素 -> 根本原因 -> 贡献因素 -> 直接原因 -> 后果
         layer_hierarchy = {

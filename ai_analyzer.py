@@ -1,5 +1,5 @@
 """
-AI分析器模块 - 使用OpenAI GPT-4o-mini进行智能事故分析
+AI Analyzer Module - Intelligent Incident Analysis using OpenAI GPT-4o-mini
 """
 
 import requests
@@ -12,13 +12,13 @@ from datetime import datetime
 import os
 from dataclasses import dataclass
 
-# 配置日志
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @dataclass
 class AnalysisResult:
-    """分析结果数据类"""
+    """Analysis Result Data Class"""
     risk_assessment: str
     root_cause_analysis: str
     contributing_factors: List[str]
@@ -29,26 +29,26 @@ class AnalysisResult:
     analysis_timestamp: str
 
 class AIAnalyzer:
-    """AI分析器类"""
+    """AI Analyzer Class"""
     
     def __init__(self, api_key: Optional[str] = None, db_path: str = "asrs_data.db"):
         """
-        初始化AI分析器
+        Initialize AI Analyzer
         
         Args:
-            api_key: OpenAI API密钥
-            db_path: 数据库路径
+            api_key: OpenAI API key
+            db_path: Database path
         """
         self.api_key = api_key or os.getenv('OPENAI_API_KEY') or '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'
         self.db_path = db_path
         
         if not self.api_key:
-            logger.warning("未设置OpenAI API密钥，将使用模拟分析")
+            logger.warning("OpenAI API key not set, will use mock analysis")
             self.use_mock = True
         else:
             self.use_mock = False
         
-        # 系统提示词
+        # System prompt
         self.system_prompt = """
         You are a senior aviation safety expert specializing in UAV incident report analysis. Your tasks are:
 
@@ -64,13 +64,13 @@ class AIAnalyzer:
     
     def analyze_incident(self, incident_data: Dict) -> AnalysisResult:
         """
-        分析事故报告
+        Analyze incident report
         
         Args:
-            incident_data: 事故数据字典
+            incident_data: Incident data dictionary
             
         Returns:
-            AnalysisResult: 分析结果
+            AnalysisResult: Analysis result
         """
         try:
             if self.use_mock:
@@ -78,13 +78,13 @@ class AIAnalyzer:
             else:
                 return self._openai_analysis(incident_data)
         except Exception as e:
-            logger.error(f"分析失败: {e}")
+            logger.error(f"Analysis failed: {e}")
             return self._fallback_analysis(incident_data)
     
     def _openai_analysis(self, incident_data: Dict) -> AnalysisResult:
-        """使用OpenAI进行分析"""
+        """Analysis using OpenAI"""
         
-        # 构建分析提示
+        # Build analysis prompt
         analysis_prompt = self._build_analysis_prompt(incident_data)
         
         try:
@@ -111,71 +111,71 @@ class AIAnalyzer:
                 analysis_text = result['choices'][0]['message']['content']
                 return self._parse_analysis_response(analysis_text, incident_data)
             else:
-                logger.error(f"OpenAI API调用失败: {response.status_code}")
+                logger.error(f"OpenAI API call failed: {response.status_code}")
                 return self._fallback_analysis(incident_data)
 
         except Exception as e:
-            logger.error(f"OpenAI API调用失败: {e}")
+            logger.error(f"OpenAI API call failed: {e}")
             return self._fallback_analysis(incident_data)
     
     def _build_analysis_prompt(self, incident_data: Dict) -> str:
-        """构建分析提示词"""
+        """Build analysis prompt"""
         
         prompt = f"""
-        请分析以下无人机事故报告：
+        Please analyze the following UAV incident report:
 
-        **基本信息：**
-        - 日期: {incident_data.get('date', 'N/A')}
-        - 时间: {incident_data.get('time_of_day', 'N/A')}
-        - 地点: {incident_data.get('location', 'N/A')}
-        - 高度: {incident_data.get('altitude', 'N/A')} 英尺
-        - 天气: {incident_data.get('weather', 'N/A')}
-        - 飞行阶段: {incident_data.get('flight_phase', 'N/A')}
-        - 任务类型: {incident_data.get('mission_type', 'N/A')}
+        **Basic Information:**
+        - Date: {incident_data.get('date', 'N/A')}
+        - Time: {incident_data.get('time_of_day', 'N/A')}
+        - Location: {incident_data.get('location', 'N/A')}
+        - Altitude: {incident_data.get('altitude', 'N/A')} feet
+        - Weather: {incident_data.get('weather', 'N/A')}
+        - Flight Phase: {incident_data.get('flight_phase', 'N/A')}
+        - Mission Type: {incident_data.get('mission_type', 'N/A')}
 
-        **事故描述：**
+        **Incident Description:**
         {incident_data.get('narrative', 'N/A')}
 
-        **主要问题：**
+        **Primary Problem:**
         {incident_data.get('primary_problem', 'N/A')}
 
-        **贡献因素：**
+        **Contributing Factors:**
         {incident_data.get('contributing_factors', 'N/A')}
 
-        **人因因素：**
+        **Human Factors:**
         {incident_data.get('human_factors', 'N/A')}
 
-        请按以下格式提供分析结果：
+        Please provide analysis results in the following format:
 
-        **风险评估：** [HIGH/MEDIUM/LOW] - 简要说明风险等级的理由
+        **Risk Assessment:** [HIGH/MEDIUM/LOW] - Brief explanation of risk level reasoning
 
-        **根本原因分析：**
-        [详细分析事故的根本原因]
+        **Root Cause Analysis:**
+        [Detailed analysis of incident root causes]
 
-        **贡献因素：**
-        1. [因素1]
-        2. [因素2]
-        3. [因素3]
+        **Contributing Factors:**
+        1. [Factor 1]
+        2. [Factor 2]
+        3. [Factor 3]
 
-        **建议措施：**
-        1. [建议1]
-        2. [建议2]
-        3. [建议3]
+        **Recommendations:**
+        1. [Recommendation 1]
+        2. [Recommendation 2]
+        3. [Recommendation 3]
 
-        **预防措施：**
-        1. [预防措施1]
-        2. [预防措施2]
-        3. [预防措施3]
+        **Preventive Measures:**
+        1. [Prevention measure 1]
+        2. [Prevention measure 2]
+        3. [Prevention measure 3]
 
-        **置信度：** [0.0-1.0] - 分析结果的置信度
+        **Confidence Score:** [0.0-1.0] - Analysis confidence level
         """
         
         return prompt
     
     def _parse_analysis_response(self, analysis_text: str, incident_data: Dict) -> AnalysisResult:
-        """解析AI分析响应"""
+        """Parse AI analysis response"""
         
-        # 简单的文本解析（实际应用中可能需要更复杂的解析逻辑）
+        # Simple text parsing (more complex parsing logic may be needed in actual applications)
         lines = analysis_text.split('\n')
         
         risk_assessment = "MEDIUM"
@@ -192,20 +192,20 @@ class AIAnalyzer:
             if not line:
                 continue
                 
-            if "风险评估：" in line:
-                risk_assessment = line.split("：")[1].split()[0]
+            if "Risk Assessment:" in line:
+                risk_assessment = line.split(":")[1].split()[0]
                 current_section = "risk"
-            elif "根本原因分析：" in line:
+            elif "Root Cause Analysis:" in line:
                 current_section = "root_cause"
-            elif "贡献因素：" in line:
+            elif "Contributing Factors:" in line:
                 current_section = "contributing"
-            elif "建议措施：" in line:
+            elif "Recommendations:" in line:
                 current_section = "recommendations"
-            elif "预防措施：" in line:
+            elif "Preventive Measures:" in line:
                 current_section = "preventive"
-            elif "置信度：" in line:
+            elif "Confidence Score:" in line:
                 try:
-                    confidence_score = float(line.split("：")[1].strip())
+                    confidence_score = float(line.split(":")[1].strip())
                 except:
                     confidence_score = 0.8
             elif line.startswith(('1.', '2.', '3.', '4.', '5.')):
@@ -219,7 +219,7 @@ class AIAnalyzer:
             elif current_section == "root_cause" and line:
                 root_cause_analysis += line + " "
         
-        # 获取相似案例
+        # Get similar cases
         similar_cases = self._find_similar_cases(incident_data)
         
         return AnalysisResult(
@@ -234,11 +234,11 @@ class AIAnalyzer:
         )
     
     def _mock_analysis(self, incident_data: Dict) -> AnalysisResult:
-        """模拟分析（当没有API密钥时使用）"""
+        """Mock analysis (used when no API key available)"""
         
         narrative = incident_data.get('narrative', '').lower()
         
-        # 基于关键词的简单风险评估
+        # Simple risk assessment based on keywords
         if any(word in narrative for word in ['crash', 'collision', 'emergency', 'failure']):
             risk_level = "HIGH"
         elif any(word in narrative for word in ['deviation', 'violation', 'communication']):
@@ -270,7 +270,7 @@ class AIAnalyzer:
         )
     
     def _fallback_analysis(self, incident_data: Dict) -> AnalysisResult:
-        """备用分析方法"""
+        """Fallback analysis method"""
         return AnalysisResult(
             risk_assessment="MEDIUM",
             root_cause_analysis="System is temporarily unable to perform detailed analysis, manual review is recommended.",
@@ -283,23 +283,23 @@ class AIAnalyzer:
         )
     
     def _find_similar_cases(self, incident_data: Dict, limit: int = 5) -> List[str]:
-        """查找相似案例"""
+        """Find similar cases"""
         try:
             if not os.path.exists(self.db_path):
                 return []
             
             conn = sqlite3.connect(self.db_path)
             
-            # 简单的相似性匹配（基于关键词）
+            # Simple similarity matching (based on keywords)
             narrative = incident_data.get('narrative', '').lower()
             keywords = self._extract_keywords(narrative)
             
             if not keywords:
                 return []
             
-            # 构建查询
+            # Build query
             keyword_conditions = []
-            for keyword in keywords[:3]:  # 只使用前3个关键词
+            for keyword in keywords[:3]:  # Only use first 3 keywords
                 keyword_conditions.append(f"LOWER(narrative) LIKE '%{keyword}%'")
             
             query = f"""
@@ -315,20 +315,20 @@ class AIAnalyzer:
             
             similar_cases = []
             for _, row in similar_cases_df.iterrows():
-                case_summary = f"案例 {row['id']} ({row['risk_level']}): {row['synopsis'][:100]}..."
+                case_summary = f"Case {row['id']} ({row['risk_level']}): {row['synopsis'][:100]}..."
                 similar_cases.append(case_summary)
             
             return similar_cases
             
         except Exception as e:
-            logger.error(f"查找相似案例失败: {e}")
+            logger.error(f"Finding similar cases failed: {e}")
             return []
     
     def _extract_keywords(self, text: str) -> List[str]:
-        """提取关键词"""
+        """Extract keywords"""
         import re
         
-        # 定义关键词模式
+        # Define keyword patterns
         patterns = [
             r'\b(communication|link|control)\b',
             r'\b(weather|wind|visibility)\b',
@@ -343,27 +343,27 @@ class AIAnalyzer:
             matches = re.findall(pattern, text, re.IGNORECASE)
             keywords.extend([match.lower() for match in matches])
         
-        return list(set(keywords))  # 去重
+        return list(set(keywords))  # Remove duplicates
     
     def get_analysis_history(self, limit: int = 10) -> List[Dict]:
-        """获取分析历史"""
-        # 这里可以实现分析历史的存储和检索
-        # 暂时返回空列表
+        """Get analysis history"""
+        # Analysis history storage and retrieval can be implemented here
+        # Return empty list for now
         return []
     
     def save_analysis_result(self, incident_id: str, result: AnalysisResult) -> bool:
-        """保存分析结果"""
+        """Save analysis result"""
         try:
-            # 这里可以实现分析结果的持久化存储
-            logger.info(f"分析结果已保存，事故ID: {incident_id}")
+            # Analysis result persistent storage can be implemented here
+            logger.info(f"Analysis result saved, incident ID: {incident_id}")
             return True
         except Exception as e:
-            logger.error(f"保存分析结果失败: {e}")
+            logger.error(f"Failed to save analysis result: {e}")
             return False
 
 def main():
-    """测试函数"""
-    # 测试数据
+    """Test function"""
+    # Test data
     test_incident = {
         'id': 'test_001',
         'date': '2024-01-15',
@@ -379,15 +379,15 @@ def main():
         'human_factors': 'Training, Situational Awareness'
     }
     
-    # 创建分析器并测试
+    # Create analyzer and test
     analyzer = AIAnalyzer()
     result = analyzer.analyze_incident(test_incident)
     
-    print("分析结果:")
-    print(f"风险评估: {result.risk_assessment}")
-    print(f"根本原因: {result.root_cause_analysis}")
-    print(f"建议措施: {result.recommendations}")
-    print(f"置信度: {result.confidence_score}")
+    print("Analysis Results:")
+    print(f"Risk Assessment: {result.risk_assessment}")
+    print(f"Root Cause: {result.root_cause_analysis}")
+    print(f"Recommendations: {result.recommendations}")
+    print(f"Confidence: {result.confidence_score}")
 
 if __name__ == "__main__":
     main()
