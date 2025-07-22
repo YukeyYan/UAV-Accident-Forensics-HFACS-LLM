@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  uav-forensics:
+    build: .
+    ports:
+      - "8501:8501"  # Streamlit
+      - "3000:3000"  # Node.js visualizations
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - NODE_SERVER_PORT=3000
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - uav-forensics
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  data:
+  logs:
+  reports:
