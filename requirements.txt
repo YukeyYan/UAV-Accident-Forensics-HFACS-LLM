@@ -15,7 +15,7 @@ matplotlib>=3.7.0
 seaborn>=0.12.0
 
 # 数据库
-sqlite3  # Python内置，无需安装
+# sqlite3  # Python内置，无需安装
 
 # 文本处理和NLP
 nltk>=3.8.0
