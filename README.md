@@ -1,8 +1,161 @@
-# UAV Accident Forensics via HFACS-LLM Reasoning: Low-Altitude Safety Insights
+# ASRS UAV Incident Intelligence Analysis System
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io/)
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-green.svg)](https://openai.com/)
+
+## 🚁 Overview
+Advanced incident analysis system combining HFACS human factors classification, causal analysis, and intelligent form assistance for UAV accident investigation.
+
+## 📁 Project Structure
+
+```
+UAV/
+├── streamlit_app.py           # Main Streamlit application
+├── requirements.txt           # Python dependencies
+├── setup.py                  # Package setup
+├── LICENSE                   # Project license
+├── README.md                 # This file
+│
+├── src/                      # Core application modules
+│   ├── __init__.py
+│   ├── ai_analyzer.py        # AI-powered incident analysis
+│   ├── hfacs_analyzer.py     # HFACS human factors analysis
+│   ├── hfacs_visualization.py # HFACS visualization components
+│   ├── data_processor.py     # ASRS data processing
+│   ├── smart_form_assistant.py # Intelligent form assistance
+│   ├── professional_investigation_engine.py # Investigation engine
+│   ├── causal_diagram_generator.py # Causal relationship analysis
+│   ├── advanced_visualizations.py # Advanced chart components
+│   ├── enhanced_ai_analyzer.py # Enhanced AI analysis
+│   ├── enhanced_memory_analyzer.py # Memory-enabled analysis
+│   ├── conversation_memory.py # Conversation memory management
+│   ├── token_optimizer.py    # Token usage optimization
+│   └── translations.py       # Multi-language support
+│
+├── config/                   # Configuration files
+│   ├── __init__.py
+│   └── config.py            # Application configuration
+│
+├── data/                    # Data files and databases
+│   ├── ASRS_DBOnline_Report.csv # ASRS incident data
+│   ├── asrs_data.db         # SQLite database
+│   └── conversation_memory.db # Memory database
+│
+├── docs/                    # Documentation
+│   ├── CHANGELOG.md
+│   ├── CONTRIBUTING.md
+│   ├── DEPLOYMENT_GUIDE.md
+│   ├── ENHANCED_SYSTEM_GUIDE.md
+│   └── [other documentation files]
+│
+├── logs/                    # Application logs
+├── reports/                 # Generated reports
+└── tests/                   # Test files (empty)
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- OpenAI API key
+- Required Python packages (see requirements.txt)
+
+### Installation
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Configure your OpenAI API key in the application settings
+
+### Running the Application
+```bash
+streamlit run streamlit_app.py
+```
+
+## 🧩 Core Features
+
+### 1. HFACS Human Factors Analysis
+- **18-category HFACS 8.0 classification**
+- **4-layer hierarchical analysis**
+- **Interactive visualizations with activation highlighting**
+- **Confidence-based assessment**
+
+### 2. Causal Analysis
+- **Automated causal relationship detection**
+- **Risk pathway identification**
+- **Root cause analysis**
+- **Interactive causal diagrams**
+
+### 3. Smart Form Assistant
+- **Intelligent form completion**
+- **Context-aware suggestions**
+- **Multi-language support**
+- **Professional report generation**
+
+### 4. Advanced Visualizations
+- **HFACS activation matrix**
+- **Hierarchy tree visualization**
+- **Layer summary dashboards**
+- **Detailed analysis tables**
+
+## 🔧 Configuration
+
+### API Configuration
+Configure your OpenAI API key in the application sidebar or through the configuration files.
+
+### Database Configuration
+The system uses SQLite databases for data storage:
+- `asrs_data.db`: Incident data storage
+- `conversation_memory.db`: Conversation history and memory
+
+## 📊 Data Sources
+- **ASRS Database**: Aviation Safety Reporting System data
+- **User Input**: Manual incident reports
+- **Smart Forms**: Guided incident reporting
+
+## 🛠️ Development
+
+### Import Structure
+With the reorganized structure, import modules using:
+```python
+from src.hfacs_analyzer import HFACSAnalyzer
+from src.data_processor import ASRSDataProcessor
+from config.config import config
+```
+
+### Adding New Features
+1. Create new modules in the `src/` directory
+2. Update imports to use relative imports within `src/`
+3. Add documentation to the `docs/` directory
+4. Update this README if needed
+
+## 📚 Documentation
+Detailed documentation is available in the `docs/` directory:
+- System architecture and design
+- API documentation
+- Deployment guides
+- Contributing guidelines
+
+## 🔒 Security
+- API keys are handled securely
+- No sensitive data is logged
+- Database access is controlled
+- Input validation is implemented
+
+## 📄 License
+This project is licensed under the terms specified in the LICENSE file.
+
+## 🤝 Contributing
+Please read CONTRIBUTING.md in the docs/ directory for details on our code of conduct and the process for submitting pull requests.
+
+## 📞 Support
+For questions and support, please refer to the documentation in the docs/ directory or contact the development team.
+
+---
+
+**Built with ❤️ for aviation safety analysis**
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.XXXXXXX-blue)](https://doi.org/10.5281/zenodo.XXXXXXX)
 

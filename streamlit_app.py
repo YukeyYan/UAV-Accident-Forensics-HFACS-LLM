@@ -27,18 +27,18 @@ api_key_configured = False
 selected_model = 'gpt-4o-mini'
 
 # Import core modules
-from data_processor import ASRSDataProcessor
-from ai_analyzer import AIAnalyzer
-from hfacs_analyzer import HFACSAnalyzer
-from smart_form_assistant import SmartFormAssistant
-from translations import get_text
-from professional_investigation_engine import ProfessionalInvestigationEngine
+from src.data_processor import ASRSDataProcessor
+from src.ai_analyzer import AIAnalyzer
+from src.hfacs_analyzer import HFACSAnalyzer
+from src.smart_form_assistant import SmartFormAssistant
+from src.translations import get_text
+from src.professional_investigation_engine import ProfessionalInvestigationEngine
 
 # Import enhanced features
 try:
-    from enhanced_ai_analyzer import EnhancedAIAnalyzer
-    from advanced_visualizations import AdvancedVisualizations
-    from causal_diagram_generator import CausalDiagramGenerator
+    from src.enhanced_ai_analyzer import EnhancedAIAnalyzer
+    from src.advanced_visualizations import AdvancedVisualizations
+    from src.causal_diagram_generator import CausalDiagramGenerator
     ENHANCED_FEATURES_AVAILABLE = True
     CAUSAL_DIAGRAM_AVAILABLE = True
 except ImportError:
@@ -342,7 +342,9 @@ class ASRSApp:
     
     def __init__(self):
         self.db_path = "asrs_data.db"
-        self.csv_path = "ASRS_DBOnline_Report.csv"
+        # 使用绝对路径确保在 Streamlit Cloud 上能找到文件
+        import os
+        self.csv_path = os.path.join(os.path.dirname(__file__), "data", "ASRS_DBOnline_Report.csv")
         
         # 初始化会话状态
         if 'data_loaded' not in st.session_state:
@@ -516,10 +518,18 @@ class ASRSApp:
             # 找到对应的索引
             if redirect_key in page_options_keys:
                 default_index = page_options_keys.index(redirect_key)
+                # 记住选择的页面
+                st.session_state.current_page = redirect_key
             else:
                 default_index = 0
+                st.session_state.current_page = page_options_keys[0]
         else:
-            default_index = 0
+            # 如果没有重定向，尝试使用上次选择的页面
+            if 'current_page' in st.session_state and st.session_state.current_page in page_options_keys:
+                default_index = page_options_keys.index(st.session_state.current_page)
+            else:
+                default_index = 0
+                st.session_state.current_page = page_options_keys[0]
 
         page_display = st.sidebar.selectbox(
             get_text("select_function_page", lang),
@@ -529,6 +539,9 @@ class ASRSApp:
         
         # 获取页面的键名
         page_key = page_options_keys[page_options.index(page_display)]
+        
+        # 更新当前页面状态
+        st.session_state.current_page = page_key
         
         # 数据加载状态检查
         self._check_data_status()
@@ -616,6 +629,75 @@ class ASRSApp:
         data_title = f'<h2 class="sub-header">{get_text("data_management_title", lang)}</h2>'
         st.markdown(data_title, unsafe_allow_html=True)
         
+        # 检查是否已加载数据并显示状态
+        if st.session_state.get('data_loaded', False) and 'asrs_data' in st.session_state:
+            data_count = len(st.session_state.asrs_data)
+            st.success(f"✅ Successfully loaded {data_count} ASRS records as historical data")
+            
+            # 显示数据概览
+            with st.expander("📊 View Data Overview", expanded=False):
+                # 数据统计信息
+                data_df = st.session_state.asrs_data
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Total Records", len(data_df))
+                with col2:
+                    st.metric("Total Columns", len(data_df.columns))
+                with col3:
+                    # 计算有Synopsis的记录数
+                    synopsis_count = data_df['Synopsis'].notna().sum() if 'Synopsis' in data_df.columns else 0
+                    st.metric("Records with Synopsis", synopsis_count)
+                with col4:
+                    # 计算有Primary Problem的记录数
+                    problem_count = data_df['Primary Problem'].notna().sum() if 'Primary Problem' in data_df.columns else 0
+                    st.metric("Records with Problems", problem_count)
+                
+                st.divider()
+                st.subheader("📋 Data Preview (First 5 Records)")
+                preview_df = st.session_state.asrs_data.head(5)
+                
+                # 选择关键列进行展示
+                display_columns = []
+                # 核心识别信息
+                if 'ACN' in preview_df.columns:
+                    display_columns.append('ACN')
+                if 'Date' in preview_df.columns:
+                    display_columns.append('Date')
+                
+                # 事故描述
+                if 'Synopsis' in preview_df.columns:
+                    display_columns.append('Synopsis')
+                if 'Primary Problem' in preview_df.columns:
+                    display_columns.append('Primary Problem')
+                    
+                # 飞行信息
+                if 'Flight Phase' in preview_df.columns:
+                    display_columns.append('Flight Phase')
+                if 'Aircraft Operator' in preview_df.columns:
+                    display_columns.append('Aircraft Operator')
+                if 'Mission' in preview_df.columns:
+                    display_columns.append('Mission')
+                    
+                # UAS特定信息
+                if 'Weight Category (UAS)' in preview_df.columns:
+                    display_columns.append('Weight Category (UAS)')
+                if 'Control Mode (UAS)' in preview_df.columns:
+                    display_columns.append('Control Mode (UAS)')
+                
+                if display_columns:
+                    st.dataframe(
+                        preview_df[display_columns],
+                        use_container_width=True,
+                        height=300
+                    )
+                else:
+                    st.dataframe(preview_df.head(), use_container_width=True, height=300)
+            
+            st.divider()
+        else:
+            st.warning("⚠️ Historical data not loaded yet. Click the button below to load ASRS data")
+        
         if st.button(get_text("load_asrs_data", lang)):
             if os.path.exists(self.csv_path):
                 with st.spinner(get_text("loading_data", lang)):
@@ -632,7 +714,49 @@ class ASRSApp:
                         st.session_state.data_processor = processor
                         
                         st.success(get_text("data_load_success", lang))
-                        st.info(f"{get_text('data_loaded_info', lang)} {len(cleaned_df)} {get_text('records', lang)}")
+                        st.info(f"✅ Successfully loaded {len(cleaned_df)} ASRS records as historical data")
+                        
+                        # 显示前五条数据预览
+                        if len(cleaned_df) > 0:
+                            st.subheader("📋 Data Preview (First 5 Records)")
+                            preview_df = cleaned_df.head(5)
+                            
+                            # 选择关键列进行展示
+                            display_columns = []
+                            # 核心识别信息
+                            if 'ACN' in preview_df.columns:
+                                display_columns.append('ACN')
+                            if 'Date' in preview_df.columns:
+                                display_columns.append('Date')
+                            
+                            # 事故描述
+                            if 'Synopsis' in preview_df.columns:
+                                display_columns.append('Synopsis')
+                            if 'Primary Problem' in preview_df.columns:
+                                display_columns.append('Primary Problem')
+                                
+                            # 飞行信息
+                            if 'Flight Phase' in preview_df.columns:
+                                display_columns.append('Flight Phase')
+                            if 'Aircraft Operator' in preview_df.columns:
+                                display_columns.append('Aircraft Operator')
+                            if 'Mission' in preview_df.columns:
+                                display_columns.append('Mission')
+                                
+                            # UAS特定信息
+                            if 'Weight Category (UAS)' in preview_df.columns:
+                                display_columns.append('Weight Category (UAS)')
+                            if 'Control Mode (UAS)' in preview_df.columns:
+                                display_columns.append('Control Mode (UAS)')
+                            
+                            if display_columns:
+                                st.dataframe(
+                                    preview_df[display_columns],
+                                    use_container_width=True,
+                                    height=300
+                                )
+                            else:
+                                st.dataframe(preview_df.head(), use_container_width=True, height=300)
                         
                     except Exception as e:
                         st.error(get_text("data_load_failed", lang).format(e))
@@ -710,6 +834,36 @@ class ASRSApp:
         description = get_text('narrative_input_description', lang)
         st.markdown(description)
         
+        # Demo data buttons
+        col1, col2, col3 = st.columns([2, 2, 3])
+        
+        with col1:
+            if st.button("📝 Load Demo Data", type="secondary", help="Load sample incident data for demonstration"):
+                # Set demo data in session state
+                st.session_state.demo_narrative = """I was flying a UAV on a 4.2 hour flight. The test points were completed and we were building time on the aircraft.  We were in preprogramming mode; where the aircraft flies along predetermined waypoints.  When the last waypoint is reached; the aircraft reenters the first waypoint and flies another lap of the preprogram waypoints.  Around XA00; we had been flying the preprogramed mission for about an hour with no issues.  There is a two person crew.  The left seat is the pilot seat and the right seat is a sensor operator who operates the payload.  The sensor operator was reading a regulatory document; when I decided I wanted to move the payload.  When we fly overseas; the pilot will occasionally cover both the left seat and the right seat when the sensor operator steps out for a few minutes to use the bathroom or get meals for the aircrew.  I had a lapse in judgment and didn't think that this could be an issue when flying at home in public use airspace.  In certain instances UAV's are flown with only one aircrew member; but this was not authorized on this flight.  I switched seats with the sensor operator in the right seat for several seconds and moved the payload.  The sensor operator sat down in the left seat.  I then stood up to move back to the left seat when another pilot stepped in the ground control station (cockpit) and took over the left seat.  The flight was finished without incident; however in hindsight I should not have switched seats with a non-pilot which is unauthorized.  I need to break out of my single pilot mindset whenever a two person crew is required and focus only on flying the aircraft.  Even when flying in preprogram mode the pilot needs to remain vigilant and ready to react to any traffic advisory or emergency."""
+                st.session_state.demo_location = "Newcastle, Australia"
+                st.session_state.demo_incident_type = "Airspace Violation"
+                st.session_state.demo_pilot_qualification = "Part 107 Remote Pilot Certificate"
+                st.session_state.demo_time_period = "0601-1200"
+                st.success("✅ Demo data loaded! The form will be populated with sample data.")
+                st.rerun()
+        
+        with col2:
+            if st.button("🗑️ Clear Form", type="secondary", help="Clear all form data"):
+                # Clear demo data from session state
+                demo_keys = ['demo_narrative', 'demo_location', 'demo_incident_type', 
+                           'demo_pilot_qualification', 'demo_time_period']
+                for key in demo_keys:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.success("✅ Form cleared!")
+                st.rerun()
+        
+        with col3:
+            # Show current form status
+            if any(key in st.session_state for key in ['demo_narrative', 'demo_location', 'demo_incident_type', 'demo_pilot_qualification', 'demo_time_period']):
+                st.info("📋 Demo data is currently loaded in the form")
+        
         # 叙述输入区域
         with st.form("narrative_form"):
             narrative_label = get_text('detailed_incident_narrative_label', lang)
@@ -739,6 +893,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 narrative_label, 
                 height=200,
                 placeholder=placeholder_text,
+                value=st.session_state.get('demo_narrative', ''),
                 key="main_narrative"
             )
             
@@ -751,23 +906,41 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 date_label = "Incident Date*" if lang == 'en' else "事故发生日期*"
                 occurrence_date = st.date_input(date_label)
                 time_label = "Time Period*" if lang == 'en' else "时间段*"
-                time_of_day = st.selectbox(time_label, 
-                    ['0001-0600', '0601-1200', '1201-1800', '1801-2400'])
+                time_options = ['0001-0600', '0601-1200', '1201-1800', '1801-2400']
+                demo_time_index = 0
+                if 'demo_time_period' in st.session_state:
+                    try:
+                        demo_time_index = time_options.index(st.session_state.demo_time_period)
+                    except ValueError:
+                        demo_time_index = 0
+                time_of_day = st.selectbox(time_label, time_options, index=demo_time_index)
             
             with col2:
                 city_label = "Location City*" if lang == 'en' else "发生城市*"
-                location_city = st.text_input(city_label)
+                location_city = st.text_input(city_label, value=st.session_state.get('demo_location', ''))
                 pilot_label = "Operator Qualification*" if lang == 'en' else "操作员资质*"
-                pilot_qualification = st.selectbox(pilot_label,
-                    ['Part 107 Remote Pilot Certificate', 'Part 61 Pilot Certificate', 
-                     'Military UAV Training', 'Manufacturer Training', 'Other', 'None'])
+                pilot_options = ['Part 107 Remote Pilot Certificate', 'Part 61 Pilot Certificate', 
+                               'Military UAV Training', 'Manufacturer Training', 'Other', 'None']
+                demo_pilot_index = 0
+                if 'demo_pilot_qualification' in st.session_state:
+                    try:
+                        demo_pilot_index = pilot_options.index(st.session_state.demo_pilot_qualification)
+                    except ValueError:
+                        demo_pilot_index = 0
+                pilot_qualification = st.selectbox(pilot_label, pilot_options, index=demo_pilot_index)
             
             with col3:
                 incident_label = "Incident Type*" if lang == 'en' else "事件类型*"
-                incident_type = st.selectbox(incident_label,
-                    ['Near Mid-Air Collision (NMAC)', 'Airspace Violation', 'Loss of Control', 
-                     'System Malfunction', 'Communication Failure', 'Weather Related', 
-                     'Runway Incursion', 'Ground Collision', 'Emergency Landing', 'Other'])
+                incident_options = ['Near Mid-Air Collision (NMAC)', 'Airspace Violation', 'Loss of Control', 
+                                  'System Malfunction', 'Communication Failure', 'Weather Related', 
+                                  'Runway Incursion', 'Ground Collision', 'Emergency Landing', 'Other']
+                demo_incident_index = 0
+                if 'demo_incident_type' in st.session_state:
+                    try:
+                        demo_incident_index = incident_options.index(st.session_state.demo_incident_type)
+                    except ValueError:
+                        demo_incident_index = 0
+                incident_type = st.selectbox(incident_label, incident_options, index=demo_incident_index)
             
             submit_label = "🚀 Start AI Smart Analysis" if lang == 'en' else "🚀 开始AI智能分析"
             submitted = st.form_submit_button(submit_label, type="primary", use_container_width=True)
@@ -783,6 +956,13 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                     'pilot_qualification': pilot_qualification,
                     'incident_type': incident_type
                 }
+                
+                # Clear demo data from session state after successful submission
+                demo_keys = ['demo_narrative', 'demo_location', 'demo_incident_type', 
+                           'demo_pilot_qualification', 'demo_time_period']
+                for key in demo_keys:
+                    if key in st.session_state:
+                        del st.session_state[key]
                 
                 st.session_state.smart_report_stage = 'smart_extraction'
                 st.rerun()
@@ -1439,6 +1619,8 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                             
                             st.session_state.current_causal_diagram = causal_diagram
                             st.success(get_text('causal_analysis_complete', lang))
+                            # 确保页面保持在当前分析页面
+                            st.rerun()
                             
                         except Exception as e:
                             st.error(get_text('causal_analysis_failed', lang).format(e))
@@ -2689,7 +2871,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             # Use the existing AI analyzer with enhanced prompt
             if hasattr(st.session_state, 'ai_analyzer') and st.session_state.ai_analyzer:
                 # Create a mock analysis result with enhanced structure
-                from ai_analyzer import AnalysisResult
+                from src.ai_analyzer import AnalysisResult
                 
                 # Call the AI system with the enhanced comprehensive context
                 temp_incident = {'narrative': comprehensive_context}
@@ -2753,7 +2935,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
     
     def _create_mock_comprehensive_result(self):
         """Create a mock comprehensive analysis result for testing"""
-        from ai_analyzer import AnalysisResult
+        from src.ai_analyzer import AnalysisResult
         
         return AnalysisResult(
             risk_assessment="MEDIUM",
@@ -2804,7 +2986,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                 try:
                     if st.session_state.hfacs_analyzer is None:
                         # 使用配置中的API密钥初始化HFACS分析器
-                        from config import config
+                        from config.config import config
                         st.session_state.hfacs_analyzer = HFACSAnalyzer(api_key=config.OPENAI_API_KEY)
 
                     narrative = current_report.get('detailed_narrative') or current_report.get('narrative', '')
@@ -2872,31 +3054,88 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
                     if st.session_state.hfacs_analyzer:
                         # 显示分析结果摘要
                         if hasattr(hfacs_result, 'classifications') and hfacs_result.classifications:
-                            st.info(f"Visualizing {len(hfacs_result.classifications)} identified HFACS classifications" if lang == 'en' else f"可视化{len(hfacs_result.classifications)}个已识别的HFACS分类")
+                            st.success(f"✅ Successfully identified {len(hfacs_result.classifications)} HFACS classifications" if lang == 'en' else f"✅ 成功识别{len(hfacs_result.classifications)}个HFACS分类")
+                            
+                            # Show identified categories for debugging
+                            with st.expander("🔍 Identified Categories" if lang == 'en' else "🔍 已识别的分类", expanded=False):
+                                for i, cls in enumerate(hfacs_result.classifications, 1):
+                                    st.write(f"{i}. **{cls.category}** (Layer: {cls.layer}, Confidence: {cls.confidence:.1%})")
                         else:
-                            st.warning("No HFACS classifications found to visualize" if lang == 'en' else "未找到可视化的HFACS分类")
+                            st.warning("No HFACS classifications found - showing framework structure only" if lang == 'en' else "未找到HFACS分类 - 仅显示框架结构")
 
                         # 可视化方式选择
                         st.subheader("🎨 Visualization Options" if lang == 'en' else "🎨 可视化选项")
-                        viz_option = st.selectbox(
-                            "Choose visualization style:" if lang == 'en' else "选择可视化风格：",
-                            ["🏗️ Hierarchical Pyramid (Recommended)" if lang == 'en' else "🏗️ 层级金字塔（推荐）", 
-                             "🌳 Traditional Tree Structure" if lang == 'en' else "🌳 传统树状结构"],
-                            help="Pyramid view shows HFACS layers in hierarchical order, Tree view shows interconnected structure" if lang == 'en' else "金字塔视图按层级顺序显示HFACS层次，树状视图显示相互关联结构"
+                        
+                        # 置信度阈值设置
+                        confidence_threshold = st.slider(
+                            "Confidence Threshold for Display:" if lang == 'en' else "显示的置信度阈值：",
+                            min_value=0.0, max_value=1.0, value=0.0, step=0.1,
+                            help="Only show classifications above this confidence level" if lang == 'en' else "仅显示高于此置信度水平的分类"
                         )
                         
-                        # 根据选择生成不同的可视化
-                        if "Pyramid" in viz_option or "金字塔" in viz_option:
-                            viz_fig = st.session_state.hfacs_analyzer.create_hfacs_pyramid_visualization(hfacs_result)
-                        else:
-                            viz_fig = st.session_state.hfacs_analyzer.create_hfacs_tree_visualization(hfacs_result)
+                        viz_option = st.selectbox(
+                            "Choose visualization style:" if lang == 'en' else "选择可视化风格：",
+                            ["🌳 Hierarchy Tree (Recommended)" if lang == 'en' else "🌳 层级树（推荐）",
+                             "📊 Activation Matrix" if lang == 'en' else "📊 激活矩阵",
+                             "📈 Layer Summary" if lang == 'en' else "📈 层级摘要", 
+                             "📋 Detailed Analysis" if lang == 'en' else "📋 详细分析"],
+                            help="Choose how to display the HFACS analysis results" if lang == 'en' else "选择如何显示HFACS分析结果"
+                        )
                         
-                        st.plotly_chart(viz_fig, use_container_width=True, config={'displayModeBar': True, 'toImageButtonOptions': {'format': 'png', 'filename': 'hfacs_analysis', 'height': 1000, 'width': 1600}})
+                        # Generate visualization based on selection
+                        try:
+                            if "Matrix" in viz_option or "矩阵" in viz_option:
+                                # Show activation matrix
+                                viz_charts = st.session_state.hfacs_analyzer.create_hfacs_visualizations(
+                                    hfacs_result, 
+                                    confidence_threshold=confidence_threshold
+                                )
+                                if 'matrix' in viz_charts:
+                                    st.plotly_chart(viz_charts['matrix'], use_container_width=True, config={'displayModeBar': True})
+                                else:
+                                    st.error("Matrix visualization not available" if lang == 'en' else "矩阵可视化不可用")
+                                    
+                            elif "Summary" in viz_option or "摘要" in viz_option:
+                                # Show layer summary (pyramid style)
+                                viz_fig = st.session_state.hfacs_analyzer.create_hfacs_pyramid_visualization(
+                                    hfacs_result, 
+                                    confidence_threshold=confidence_threshold
+                                )
+                                st.plotly_chart(viz_fig, use_container_width=True, config={'displayModeBar': True})
+                                
+                            elif "Tree" in viz_option or "树" in viz_option:
+                                # Show hierarchy tree
+                                viz_fig = st.session_state.hfacs_analyzer.create_hfacs_tree_visualization(
+                                    hfacs_result, 
+                                    confidence_threshold=confidence_threshold
+                                )
+                                st.plotly_chart(viz_fig, use_container_width=True, config={'displayModeBar': True})
+                                
+                            elif "Detailed" in viz_option or "详细" in viz_option:
+                                # Show detailed analysis
+                                viz_charts = st.session_state.hfacs_analyzer.create_hfacs_visualizations(
+                                    hfacs_result, 
+                                    confidence_threshold=confidence_threshold
+                                )
+                                if 'details' in viz_charts:
+                                    st.plotly_chart(viz_charts['details'], use_container_width=True, config={'displayModeBar': True})
+                                else:
+                                    st.error("Details visualization not available" if lang == 'en' else "详细分析可视化不可用")
+                                    
+                        except Exception as viz_error:
+                            st.error(f"Visualization error: {str(viz_error)}" if lang == 'en' else f"可视化错误: {str(viz_error)}")
+                            logger.error(f"Streamlit visualization error: {viz_error}")
                     else:
                         st.warning(get_text('hfacs_not_initialized', lang))
                 except Exception as e:
-                    st.error(f"Tree generation failed: {str(e)}" if lang == 'en' else f"树状图生成失败: {str(e)}")
+                    st.error(f"Visualization generation failed: {str(e)}" if lang == 'en' else f"可视化生成失败: {str(e)}")
                     st.error("Please check the console for detailed error information" if lang == 'en' else "请检查控制台获取详细错误信息")
+                    
+                    # Add debug information  
+                    if hasattr(hfacs_result, 'classifications'):
+                        st.write(f"Debug: Found {len(hfacs_result.classifications) if hfacs_result.classifications else 0} classifications")
+                    else:
+                        st.write("Debug: No classifications attribute found in result")
                     
                 # 显示分类统计
                 if hasattr(hfacs_result, 'classifications') and hfacs_result.classifications:

@@ -1047,7 +1047,7 @@ def main():
     st.set_page_config(page_title="高级可视化测试", layout="wide")
     
     # 创建模拟数据进行测试
-    from enhanced_ai_analyzer import EnhancedAnalysisResult, RiskMatrix, FiveWOneHAnalysis
+    from .enhanced_ai_analyzer import EnhancedAnalysisResult, RiskMatrix, FiveWOneHAnalysis
     
     # 这里应该有实际的测试数据...
     st.title("🔬 高级可视化组件测试")

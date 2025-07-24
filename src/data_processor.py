@@ -26,8 +26,18 @@ class ASRSDataProcessor:
         self.processed_data = []
         
     def load_data(self) -> pd.DataFrame:
-        """Load CSV data"""
+        """Load CSV data with fallback for cloud deployment"""
         try:
+            # Check if CSV file exists
+            import os
+            if not os.path.exists(self.csv_file_path):
+                logger.warning(f"CSV file not found at {self.csv_file_path}, creating empty DataFrame")
+                # Create empty DataFrame with expected columns for cloud deployment
+                self.df = pd.DataFrame(columns=[
+                    'ACN', 'Time', 'Aircraft_1_Reference', 'Aircraft_1_AircraftCategory', 
+                    'Primary_Problem', 'Narrative', 'Human_Factors'
+                ])
+                return self.df
             # Read CSV file, skip first two rows (multi-line headers), use second row as column names
             self.df = pd.read_csv(self.csv_file_path, skiprows=[0], header=0)
             
@@ -330,7 +340,8 @@ class ASRSDataProcessor:
 
 def main():
     """主函数，用于测试数据处理器"""
-    processor = ASRSDataProcessor("ASRS_DBOnline 无人机事故报告).csv")
+    from config.config import Config
+    processor = ASRSDataProcessor(Config.CSV_DATA_PATH)
     
     # 加载和处理数据
     processor.load_data()

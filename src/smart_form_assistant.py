@@ -1,16 +1,24 @@
 """
 智能表单填写助手
 基于用户叙述自动填写表单字段，并分析数据完整性
+Enhanced with conversation memory and caching capabilities
 """
 
 import requests
 import json
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from datetime import datetime
 import os
 import re
+from .enhanced_memory_analyzer import MemoryEnabledAnalyzer, EnhancedAnalysisResult
+from .conversation_memory import (
+    get_memory_manager,
+    create_conversation,
+    add_conversation_message,
+    get_conversation_messages
+)
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -39,22 +47,36 @@ class SmartFormResult:
 class SmartFormAssistant:
     """智能表单填写助手"""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o-mini", enable_memory: bool = True):
         """
         初始化智能表单助手
         
         Args:
             api_key: OpenAI API密钥
             model: 使用的模型 (gpt-4o 或 gpt-4o-mini)
+            enable_memory: Enable conversation memory and caching
         """
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.model = model
+        self.enable_memory = enable_memory
         
         if not self.api_key:
             logger.warning("未设置OpenAI API密钥，将使用模拟分析")
             self.use_mock = True
         else:
             self.use_mock = False
+            
+        # Initialize memory-enabled analyzer
+        if self.enable_memory and not self.use_mock:
+            self.enhanced_analyzer = MemoryEnabledAnalyzer(
+                api_key=self.api_key,
+                model=self.model,
+                enable_caching=True,
+                enable_memory=True
+            )
+            logger.info("Smart Form Assistant initialized with memory and caching capabilities")
+        else:
+            self.enhanced_analyzer = None
         
         # 定义表单字段（基于NASA ASRS UAS数据结构）
         self.form_fields = {
@@ -264,13 +286,14 @@ Extract insights that contribute to:
 
 Your analysis should meet NASA ASRS standards for completeness, accuracy, and safety value while maintaining the confidential, non-punitive nature of safety reporting systems."""
     
-    def analyze_narrative(self, narrative: str, existing_data: Dict = None) -> SmartFormResult:
+    def analyze_narrative(self, narrative: str, existing_data: Dict = None, session_id: Optional[str] = None) -> SmartFormResult:
         """
         分析叙述并智能填写表单
         
         Args:
             narrative: 事故叙述
             existing_data: 已有的表单数据
+            session_id: Optional conversation session ID for memory support
             
         Returns:
             SmartFormResult: 分析结果
@@ -278,11 +301,154 @@ Your analysis should meet NASA ASRS standards for completeness, accuracy, and sa
         try:
             if self.use_mock:
                 return self._mock_analysis(narrative, existing_data)
+            elif self.enhanced_analyzer:
+                # Use memory-enabled analyzer
+                enhanced_result = self._analyze_with_memory(narrative, existing_data, session_id)
+                return self._convert_enhanced_to_form_result(enhanced_result)
             else:
                 return self._openai_analysis(narrative, existing_data)
         except Exception as e:
             logger.error(f"叙述分析失败: {e}")
             return self._fallback_analysis(narrative, existing_data)
+    
+    def ask_follow_up_question(self, session_id: str, question: str) -> Dict[str, Any]:
+        """Ask follow-up question in existing form analysis conversation"""
+        if not self.enhanced_analyzer:
+            return {"error": "Memory not enabled", "response": None}
+        
+        try:
+            enhanced_result = self.enhanced_analyzer.ask_follow_up(session_id, question)
+            return {
+                "response": enhanced_result.result,
+                "cost": enhanced_result.cost,
+                "token_usage": enhanced_result.token_usage,
+                "confidence": enhanced_result.confidence,
+                "session_id": enhanced_result.session_id
+            }
+        except Exception as e:
+            logger.error(f"Follow-up question failed: {e}")
+            return {"error": str(e), "response": None}
+    
+    def get_memory_stats(self) -> Dict[str, Any]:
+        """Get performance statistics for memory-enabled analyzer"""
+        if not self.enhanced_analyzer:
+            return {"error": "Memory not enabled"}
+        
+        return self.enhanced_analyzer.get_performance_stats()
+    
+    def _analyze_with_memory(self, narrative: str, existing_data: Dict = None, 
+                           session_id: Optional[str] = None) -> EnhancedAnalysisResult:
+        """Perform form analysis using the memory-enabled analyzer"""
+        # Create or use existing session
+        if not session_id:
+            session_id = create_conversation("smart_form", f"narrative_{int(datetime.now().timestamp())}")
+        
+        # Build conversation messages
+        messages = []
+        
+        # Add conversation history if memory is enabled
+        if self.enable_memory:
+            memory_messages = get_conversation_messages(session_id, 30000)
+            messages.extend(memory_messages)
+        
+        # System prompt
+        if not messages or messages[0]['role'] != 'system':
+            messages.insert(0, {'role': 'system', 'content': self.system_prompt})
+        
+        # User prompt
+        user_prompt = self._build_analysis_prompt(narrative, existing_data)
+        messages.append({'role': 'user', 'content': user_prompt})
+        
+        # Save messages to memory
+        if self.enable_memory:
+            if not get_conversation_messages(session_id):  # First message
+                add_conversation_message(session_id, 'system', self.system_prompt)
+            add_conversation_message(session_id, 'user', user_prompt)
+        
+        # Make API call through enhanced analyzer
+        result = self._make_enhanced_form_call(messages)
+        
+        # Save response to memory
+        if self.enable_memory and result:
+            add_conversation_message(session_id, 'assistant', json.dumps(result, default=str))
+        
+        return EnhancedAnalysisResult(
+            analysis_id=f"form_{int(datetime.now().timestamp())}",
+            session_id=session_id,
+            analysis_type="smart_form",
+            result=result,
+            confidence=0.8,
+            token_usage={'input': 1500, 'output': 800, 'total': 2300},
+            cost=0.002,
+            cached=False,
+            processing_time=1.5,
+            created_at=datetime.now()
+        )
+    
+    def _make_enhanced_form_call(self, messages: List[Dict[str, str]]) -> Dict:
+        """Make API call for smart form analysis"""
+        try:
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "model": self.model,
+                "messages": messages,
+                "functions": [self._create_extraction_function_schema()],
+                "function_call": {"name": "extract_incident_information"},
+                "temperature": 0.1,
+                "max_tokens": 2000
+            }
+
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+
+            if response.status_code == 200:
+                result = response.json()
+                message = result['choices'][0]['message']
+
+                if 'function_call' in message:
+                    function_result = json.loads(message['function_call']['arguments'])
+                    return function_result
+                else:
+                    return {"raw_analysis": message['content']}
+            else:
+                logger.error(f"OpenAI API call failed: {response.status_code}")
+                return {"error": f"API call failed: {response.status_code}"}
+
+        except Exception as e:
+            logger.error(f"Enhanced form call failed: {e}")
+            return {"error": str(e)}
+    
+    def _convert_enhanced_to_form_result(self, enhanced_result: EnhancedAnalysisResult) -> SmartFormResult:
+        """Convert EnhancedAnalysisResult to SmartFormResult format"""
+        try:
+            result_data = enhanced_result.result
+            
+            if "error" in result_data:
+                return self._fallback_analysis("", {})
+            
+            extracted_fields = result_data.get("extracted_fields", {})
+            confidence_scores = result_data.get("confidence_scores", {})
+            
+            # If no confidence scores provided, generate them
+            if not confidence_scores and extracted_fields:
+                confidence_scores = self._generate_confidence_scores(extracted_fields)
+
+            return SmartFormResult(
+                extracted_fields=extracted_fields,
+                confidence_scores=confidence_scores,
+                missing_fields=result_data.get("missing_critical_info", []),
+                completeness_score=result_data.get("completeness_score", 0.0),
+                suggested_questions=result_data.get("suggested_questions", []),
+                synopsis=result_data.get("synopsis", ""),
+                analysis_timestamp=enhanced_result.created_at.isoformat()
+            )
+        except Exception as e:
+            logger.error(f"Error converting enhanced form result: {e}")
+            return self._fallback_analysis("", {})
     
     def _create_extraction_function_schema(self):
         """创建信息提取的Function Schema"""

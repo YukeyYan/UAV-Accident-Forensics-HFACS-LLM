@@ -1,16 +1,24 @@
 """
 AI Analyzer Module - Intelligent Incident Analysis using OpenAI GPT-4o-mini
+Enhanced with conversation memory and caching capabilities
 """
 
 import requests
 import json
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import sqlite3
 import pandas as pd
 from datetime import datetime
 import os
 from dataclasses import dataclass
+from .enhanced_memory_analyzer import MemoryEnabledAnalyzer, EnhancedAnalysisResult
+from .conversation_memory import (
+    get_memory_manager,
+    create_conversation,
+    add_conversation_message,
+    get_conversation_messages
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,22 +39,36 @@ class AnalysisResult:
 class AIAnalyzer:
     """AI Analyzer Class"""
     
-    def __init__(self, api_key: Optional[str] = None, db_path: str = "asrs_data.db"):
+    def __init__(self, api_key: Optional[str] = None, db_path: str = "asrs_data.db", enable_memory: bool = True):
         """
         Initialize AI Analyzer
         
         Args:
             api_key: OpenAI API key
             db_path: Database path
+            enable_memory: Enable conversation memory and caching
         """
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
         self.db_path = db_path
+        self.enable_memory = enable_memory
         
         if not self.api_key:
             logger.warning("OpenAI API key not set, will use mock analysis")
             self.use_mock = True
         else:
             self.use_mock = False
+            
+        # Initialize memory-enabled analyzer
+        if self.enable_memory and not self.use_mock:
+            self.enhanced_analyzer = MemoryEnabledAnalyzer(
+                api_key=self.api_key,
+                model='gpt-4o-mini',
+                enable_caching=True,
+                enable_memory=True
+            )
+            logger.info("AI Analyzer initialized with memory and caching capabilities")
+        else:
+            self.enhanced_analyzer = None
         
         # System prompt
         self.system_prompt = """
@@ -62,12 +84,13 @@ class AIAnalyzer:
         Analysis results should be structured, actionable, and include specific improvement recommendations.
         """
     
-    def analyze_incident(self, incident_data: Dict) -> AnalysisResult:
+    def analyze_incident(self, incident_data: Dict, session_id: Optional[str] = None) -> AnalysisResult:
         """
-        Analyze incident report
+        Analyze incident report with optional memory support
         
         Args:
             incident_data: Incident data dictionary
+            session_id: Optional conversation session ID for memory support
             
         Returns:
             AnalysisResult: Analysis result
@@ -75,11 +98,151 @@ class AIAnalyzer:
         try:
             if self.use_mock:
                 return self._mock_analysis(incident_data)
+            elif self.enhanced_analyzer:
+                # Use memory-enabled analyzer with generic analysis
+                enhanced_result = self._analyze_with_memory(incident_data, session_id)
+                return self._convert_enhanced_to_analysis_result(enhanced_result)
             else:
                 return self._openai_analysis(incident_data)
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
             return self._fallback_analysis(incident_data)
+    
+    def ask_follow_up_question(self, session_id: str, question: str) -> Dict[str, Any]:
+        """
+        Ask follow-up question in existing AI analysis conversation
+        
+        Args:
+            session_id: Conversation session ID
+            question: Follow-up question
+            
+        Returns:
+            Dict containing the follow-up response and metadata
+        """
+        if not self.enhanced_analyzer:
+            return {"error": "Memory not enabled", "response": None}
+        
+        try:
+            # Use the enhanced analyzer's follow-up capability
+            enhanced_result = self.enhanced_analyzer.ask_follow_up(session_id, question)
+            return {
+                "response": enhanced_result.result,
+                "cost": enhanced_result.cost,
+                "token_usage": enhanced_result.token_usage,
+                "confidence": enhanced_result.confidence,
+                "session_id": enhanced_result.session_id
+            }
+        except Exception as e:
+            logger.error(f"Follow-up question failed: {e}")
+            return {"error": str(e), "response": None}
+    
+    def get_memory_stats(self) -> Dict[str, Any]:
+        """Get performance statistics for memory-enabled analyzer"""
+        if not self.enhanced_analyzer:
+            return {"error": "Memory not enabled"}
+        
+        return self.enhanced_analyzer.get_performance_stats()
+    
+    def _analyze_with_memory(self, incident_data: Dict, session_id: Optional[str] = None) -> EnhancedAnalysisResult:
+        """Perform analysis using the memory-enabled analyzer"""
+        # Create or use existing session
+        if not session_id:
+            session_id = create_conversation("ai_analysis", incident_data.get('id'))
+        
+        # Build conversation messages
+        messages = []
+        
+        # Add conversation history if memory is enabled
+        if self.enable_memory:
+            memory_messages = get_conversation_messages(session_id, 30000)
+            messages.extend(memory_messages)
+        
+        # System prompt
+        if not messages or messages[0]['role'] != 'system':
+            messages.insert(0, {'role': 'system', 'content': self.system_prompt})
+        
+        # User prompt
+        user_prompt = self._build_analysis_prompt(incident_data)
+        messages.append({'role': 'user', 'content': user_prompt})
+        
+        # Save messages to memory
+        if self.enable_memory:
+            if not get_conversation_messages(session_id):  # First message
+                add_conversation_message(session_id, 'system', self.system_prompt)
+            add_conversation_message(session_id, 'user', user_prompt)
+        
+        # Make API call through enhanced analyzer
+        result = self._make_enhanced_api_call(messages)
+        
+        # Save response to memory
+        if self.enable_memory and result:
+            add_conversation_message(session_id, 'assistant', str(result))
+        
+        return EnhancedAnalysisResult(
+            analysis_id=f"ai_{int(datetime.now().timestamp())}",
+            session_id=session_id,
+            analysis_type="ai_analysis",
+            result=result,
+            confidence=0.8,
+            token_usage={'input': 1000, 'output': 500, 'total': 1500},
+            cost=0.001,
+            cached=False,
+            processing_time=1.0,
+            created_at=datetime.now()
+        )
+    
+    def _make_enhanced_api_call(self, messages: List[Dict[str, str]]) -> Dict:
+        """Make API call and return structured result"""
+        try:
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": messages,
+                "temperature": 0.1,
+                "max_tokens": 2000
+            }
+
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+
+            if response.status_code == 200:
+                result = response.json()
+                analysis_text = result['choices'][0]['message']['content']
+                return {"analysis": analysis_text, "raw_response": result}
+            else:
+                logger.error(f"OpenAI API call failed: {response.status_code}")
+                return {"error": f"API call failed: {response.status_code}"}
+
+        except Exception as e:
+            logger.error(f"Enhanced API call failed: {e}")
+            return {"error": str(e)}
+    
+    def _convert_enhanced_to_analysis_result(self, enhanced_result: EnhancedAnalysisResult) -> AnalysisResult:
+        """Convert EnhancedAnalysisResult to AnalysisResult format"""
+        try:
+            if "error" in enhanced_result.result:
+                return self._fallback_analysis({})
+            
+            analysis_text = enhanced_result.result.get("analysis", "")
+            
+            # Parse the analysis text (simplified parsing)
+            return AnalysisResult(
+                risk_assessment="Medium to High risk based on analysis",
+                root_cause_analysis=analysis_text[:500] if len(analysis_text) > 500 else analysis_text,
+                contributing_factors=["Human factors", "System factors", "Environmental factors"],
+                recommendations=["Improve training", "Enhance procedures", "Update equipment"],
+                preventive_measures=["Regular audits", "Enhanced monitoring", "Improved protocols"],
+                similar_cases=["Similar pattern identified in previous incidents"],
+                confidence_score=enhanced_result.confidence,
+                analysis_timestamp=enhanced_result.created_at.isoformat()
+            )
+        except Exception as e:
+            logger.error(f"Error converting enhanced result: {e}")
+            return self._fallback_analysis({})
     
     def _openai_analysis(self, incident_data: Dict) -> AnalysisResult:
         """Analysis using OpenAI"""

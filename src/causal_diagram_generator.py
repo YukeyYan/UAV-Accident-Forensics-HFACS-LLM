@@ -16,7 +16,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import networkx as nx
 import numpy as np
-from translations import get_text
+from .translations import get_text
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -78,16 +78,18 @@ class CausalDiagramGenerator:
             'control_point': '#27ae60'       # Green - Control point
         }
         
-        # 定义类别颜色
+        # Define category colors
         self.category_colors = {
-            'human': '#3498db',          # 蓝色 - 人为因素
-            'technical': '#e74c3c',      # 红色 - 技术因素
-            'environmental': '#27ae60',  # 绿色 - 环境因素
-            'organizational': '#f39c12', # 橙色 - 组织因素
-            'procedural': '#9b59b6'      # 紫色 - 程序因素
+            'human': '#3498db',          # Blue - Human factors
+            'technical': '#e74c3c',      # Red - Technical factors
+            'environmental': '#27ae60',  # Green - Environmental factors
+            'organizational': '#f39c12', # Orange - Organizational factors
+            'procedural': '#9b59b6'      # Purple - Procedural factors
         }
         
         self.system_prompt = """You are a world-class incident investigation expert and causal analysis specialist with expertise in:
+
+IMPORTANT: Always respond in English. All analysis, descriptions, node names, and outputs must be in English only.
 
 🎯 CORE COMPETENCIES:
 • Root Cause Analysis (RCA) methodologies
@@ -138,14 +140,14 @@ Your analysis should provide actionable insights for prevention and risk mitigat
     
     def generate_causal_diagram(self, narrative: str, incident_data: Dict = None) -> CausalDiagram:
         """
-        基于叙述生成因果图
+        Generate causal diagram based on narrative
         
         Args:
-            narrative: 事故叙述
-            incident_data: 额外的事故数据
+            narrative: Incident narrative
+            incident_data: Additional incident data
             
         Returns:
-            CausalDiagram: 生成的因果图
+            CausalDiagram: Generated causal diagram
         """
         try:
             if self.use_mock:
@@ -153,13 +155,13 @@ Your analysis should provide actionable insights for prevention and risk mitigat
             else:
                 return self._generate_ai_diagram(narrative, incident_data)
         except Exception as e:
-            logger.error(f"因果图生成失败: {e}")
+            logger.error(f"Causal diagram generation failed: {e}")
             return self._generate_fallback_diagram(narrative, incident_data)
     
     def _generate_ai_diagram(self, narrative: str, incident_data: Dict = None) -> CausalDiagram:
-        """使用AI生成因果图"""
+        """Generate causal diagram using AI"""
         
-        # 构建分析提示
+        # Build analysis prompt
         prompt = self._build_causal_analysis_prompt(narrative, incident_data)
         
         try:
@@ -193,15 +195,15 @@ Your analysis should provide actionable insights for prevention and risk mitigat
                 else:
                     return self._generate_fallback_diagram(narrative, incident_data)
             else:
-                logger.error(f"AI分析失败: {response.status_code}")
+                logger.error(f"AI analysis failed: {response.status_code}")
                 return self._generate_fallback_diagram(narrative, incident_data)
 
         except Exception as e:
-            logger.error(f"AI因果分析失败: {e}")
+            logger.error(f"AI causal analysis failed: {e}")
             return self._generate_fallback_diagram(narrative, incident_data)
     
     def _build_causal_analysis_prompt(self, narrative: str, incident_data: Dict = None) -> str:
-        """构建因果分析提示"""
+        """Build causal analysis prompt"""
         
         additional_info = ""
         if incident_data:
@@ -211,6 +213,8 @@ Your analysis should provide actionable insights for prevention and risk mitigat
                     additional_info += f"- {key}: {value}\n"
         
         prompt = f"""Conduct a comprehensive causal analysis of the following UAV/UAS incident narrative:
+
+**LANGUAGE REQUIREMENT: Please respond in English only. All analysis, descriptions, and outputs must be in English.**
 
 **INCIDENT NARRATIVE:**
 {narrative}
@@ -277,15 +281,17 @@ Define causal relationships:
 Establish temporal sequence showing how factors developed and interacted over time.
 
 **PREVENTION FOCUS:**
-Identify specific, actionable intervention points that could break the causal chain and prevent recurrence."""
+Identify specific, actionable intervention points that could break the causal chain and prevent recurrence.
+
+**FINAL REMINDER: All responses, analysis, node names, descriptions, and outputs must be in English only. Do not use any other language."""
         
         return prompt
     
     def _create_causal_function_schema(self):
-        """创建因果分析的Function Schema"""
+        """Create causal analysis Function Schema"""
         return {
             "name": "analyze_causal_relationships",
-            "description": "Analyze incident narrative and generate comprehensive causal diagram data",
+            "description": "Analyze incident narrative and generate comprehensive causal diagram data. All outputs must be in English only.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -300,13 +306,13 @@ Identify specific, actionable intervention points that could break the causal ch
                             "type": "object",
                             "properties": {
                                 "id": {"type": "string", "description": "Unique identifier"},
-                                "name": {"type": "string", "description": "Factor name"},
+                                "name": {"type": "string", "description": "Factor name (in English only)"},
                                 "type": {
                                     "type": "string", 
                                     "enum": ["root_cause", "contributing_factor", "immediate_cause", "consequence"],
                                     "description": "Factor classification"
                                 },
-                                "description": {"type": "string", "description": "Detailed description"},
+                                "description": {"type": "string", "description": "Detailed description (in English only)"},
                                 "likelihood": {
                                     "type": "number", 
                                     "minimum": 0.0, 
@@ -359,7 +365,7 @@ Identify specific, actionable intervention points that could break the causal ch
                                     "maximum": 1.0,
                                     "description": "Confidence in relationship"
                                 },
-                                "description": {"type": "string", "description": "Relationship description"}
+                                "description": {"type": "string", "description": "Relationship description (in English only)"}
                             },
                             "required": ["from_node", "to_node", "relationship_type", "strength", "confidence", "description"]
                         }
@@ -405,9 +411,9 @@ Identify specific, actionable intervention points that could break the causal ch
         }
     
     def _parse_causal_result(self, result: Dict, narrative: str) -> CausalDiagram:
-        """解析AI分析结果"""
+        """Parse AI analysis results"""
         
-        # 解析节点
+        # Parse nodes
         nodes = []
         for node_data in result.get("causal_nodes", []):
             node = CausalNode(
@@ -422,7 +428,7 @@ Identify specific, actionable intervention points that could break the causal ch
             )
             nodes.append(node)
         
-        # 解析关系
+        # Parse relationships
         relationships = []
         for rel_data in result.get("causal_relationships", []):
             relationship = CausalRelationship(
@@ -451,11 +457,11 @@ Identify specific, actionable intervention points that could break the causal ch
         )
     
     def _generate_mock_diagram(self, narrative: str, incident_data: Dict = None) -> CausalDiagram:
-        """生成模拟因果图"""
+        """Generate mock causal diagram"""
         
         narrative_lower = narrative.lower()
         
-        # 基于叙述内容生成节点
+        # Generate nodes based on narrative content
         nodes = []
         relationships = []
         
@@ -505,7 +511,7 @@ Identify specific, actionable intervention points that could break the causal ch
                 category="human"
             ))
         
-        # 环境因素
+        # Environmental factors
         if 'weather' in narrative_lower or 'wind' in narrative_lower:
             nodes.append(CausalNode(
                 id="cf_weather",
@@ -518,7 +524,7 @@ Identify specific, actionable intervention points that could break the causal ch
                 category="environmental"
             ))
         
-        # 后果
+        # Consequences
         nodes.append(CausalNode(
             id="cons_control_loss",
             name="Loss of Aircraft Control",
@@ -530,7 +536,7 @@ Identify specific, actionable intervention points that could break the causal ch
             category="technical"
         ))
         
-        # 如果节点太少，添加默认节点
+        # If too few nodes, add default nodes
         if len(nodes) < 3:
             nodes.extend([
                 CausalNode(
@@ -555,7 +561,7 @@ Identify specific, actionable intervention points that could break the causal ch
                 )
             ])
         
-        # 生成基本关系
+        # Generate basic relationships
         if len(relationships) == 0:
             for i in range(len(nodes) - 1):
                 relationships.append(CausalRelationship(
@@ -567,7 +573,7 @@ Identify specific, actionable intervention points that could break the causal ch
                     description=f"{nodes[i].name} leads to {nodes[i + 1].name}"
                 ))
         
-        # 时间线
+        # Timeline
         timeline = [
             {"time": "T-30 min", "event": "Normal flight preparation", "factors": [], "criticality": "low"},
             {"time": "T-10 min", "event": "Flight mission commenced", "factors": [], "criticality": "low"}, 
@@ -576,22 +582,22 @@ Identify specific, actionable intervention points that could break the causal ch
             {"time": "T+5 min", "event": "Emergency response initiated", "factors": [], "criticality": "high"}
         ]
         
-        # 风险路径
+        # Risk paths
         risk_paths = []
         if len(nodes) >= 3:
             risk_paths.append([nodes[0].id, nodes[1].id, nodes[-1].id])
         
-        # 控制点
+        # Control points
         control_points = [
             {
-                "name": "预防性维护检查",
-                "description": "加强设备预防性维护和故障预测",
+                "name": "Preventive Maintenance Check",
+                "description": "Strengthen equipment preventive maintenance and fault prediction",
                 "effectiveness": 0.8,
                 "associated_factors": [nodes[0].id if nodes else ""]
             },
             {
-                "name": "应急程序培训",
-                "description": "强化操作员应急情况处置培训",
+                "name": "Emergency Procedure Training",
+                "description": "Strengthen operator emergency response training",
                 "effectiveness": 0.7,
                 "associated_factors": [node.id for node in nodes if node.category == "human"]
             }
@@ -600,7 +606,7 @@ Identify specific, actionable intervention points that could break the causal ch
         return CausalDiagram(
             nodes=nodes,
             relationships=relationships,
-            central_event="UAV通信故障事故",
+            central_event="UAV Communication Failure Incident",
             timeline=timeline,
             risk_paths=risk_paths,
             control_points=control_points,
@@ -613,7 +619,7 @@ Identify specific, actionable intervention points that could break the causal ch
         )
     
     def _generate_fallback_diagram(self, narrative: str, incident_data: Dict = None) -> CausalDiagram:
-        """生成备用因果图"""
+        """Generate fallback causal diagram"""
         
         # 简单的备用图
         nodes = [
@@ -892,7 +898,7 @@ Identify specific, actionable intervention points that could break the causal ch
             'root_cause': 1,        # 根本原因层
             'contributing_factor': 2, # 贡献因素层  
             'immediate_cause': 3,    # 直接原因层
-            'consequence': 4         # 后果层（最底层）
+            'consequence': 4         # Consequences层（最底层）
         }
         
         # 按类别分层，从左到右：人为 -> 技术 -> 环境 -> 程序 -> 组织

@@ -15,7 +15,9 @@ class Config:
     
     # 数据库配置
     DATABASE_PATH = os.getenv('DATABASE_PATH', 'asrs_data.db')
-    CSV_DATA_PATH = os.getenv('CSV_DATA_PATH', 'ASRS_DBOnline 无人机事故报告).csv')
+    # 使用绝对路径确保在部署环境中能找到文件
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Go up to project root
+    CSV_DATA_PATH = os.getenv('CSV_DATA_PATH', os.path.join(BASE_DIR, 'data', 'ASRS_DBOnline_Report.csv'))
     
     # OpenAI配置
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
@@ -111,7 +113,7 @@ DEBUG=False
 
 # 数据库配置
 DATABASE_PATH=asrs_data.db
-CSV_DATA_PATH=ASRS_DBOnline 无人机事故报告).csv
+CSV_DATA_PATH=ASRS_DBOnline_Report.csv
 
 # OpenAI配置（必填）
 OPENAI_API_KEY=your_openai_api_key_here

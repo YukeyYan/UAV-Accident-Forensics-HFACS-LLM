@@ -1,6 +1,7 @@
 """
 专业事故调查分析引擎
 LLM驱动的深度无人机事故调查分析系统
+Enhanced with conversation memory and caching capabilities
 """
 
 import requests
@@ -11,10 +12,17 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 import os
 import re
+from .enhanced_memory_analyzer import MemoryEnabledAnalyzer, EnhancedAnalysisResult
+from .conversation_memory import (
+    get_memory_manager,
+    create_conversation,
+    add_conversation_message,
+    get_conversation_messages
+)
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -58,15 +66,28 @@ class InvestigationResult:
 class ProfessionalInvestigationEngine:
     """专业事故调查分析引擎"""
     
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, enable_memory: bool = True):
         """初始化调查引擎"""
         self.api_key = api_key or os.getenv('OPENAI_API_KEY')
+        self.enable_memory = enable_memory
         
         if not self.api_key:
             logger.warning("未设置OpenAI API密钥，将使用模拟分析")
             self.use_mock = True
         else:
             self.use_mock = False
+            
+        # Initialize memory-enabled analyzer
+        if self.enable_memory and not self.use_mock:
+            self.enhanced_analyzer = MemoryEnabledAnalyzer(
+                api_key=self.api_key,
+                model='gpt-4o',
+                enable_caching=True,
+                enable_memory=True
+            )
+            logger.info("Professional Investigation Engine initialized with memory and caching capabilities")
+        else:
+            self.enhanced_analyzer = None
             
         # 专业调查系统提示词
         self.system_prompt = """You are a senior aviation safety investigator with 20+ years of experience in UAV incident investigation.
@@ -165,15 +186,181 @@ OUTPUT REQUIREMENTS:
 - Risk-based prioritization
 - Industry-standard terminology"""
 
-    def investigate_incident(self, incident_data: Dict) -> InvestigationResult:
+    def investigate_incident(self, incident_data: Dict, session_id: Optional[str] = None) -> InvestigationResult:
         """进行专业事故调查分析"""
         try:
             if self.use_mock:
                 return self._mock_investigation(incident_data)
+            elif self.enhanced_analyzer:
+                # Use memory-enabled analyzer
+                enhanced_result = self._investigate_with_memory(incident_data, session_id)
+                return self._convert_enhanced_to_investigation_result(enhanced_result, incident_data)
             else:
                 return self._llm_investigation(incident_data)
         except Exception as e:
             logger.error(f"专业调查分析失败: {e}")
+            return self._fallback_investigation(incident_data)
+    
+    def ask_follow_up_question(self, session_id: str, question: str) -> Dict[str, Any]:
+        """Ask follow-up question in existing investigation conversation"""
+        if not self.enhanced_analyzer:
+            return {"error": "Memory not enabled", "response": None}
+        
+        try:
+            enhanced_result = self.enhanced_analyzer.ask_follow_up(session_id, question)
+            return {
+                "response": enhanced_result.result,
+                "cost": enhanced_result.cost,
+                "token_usage": enhanced_result.token_usage,
+                "confidence": enhanced_result.confidence,
+                "session_id": enhanced_result.session_id
+            }
+        except Exception as e:
+            logger.error(f"Follow-up question failed: {e}")
+            return {"error": str(e), "response": None}
+    
+    def get_memory_stats(self) -> Dict[str, Any]:
+        """Get performance statistics for memory-enabled analyzer"""
+        if not self.enhanced_analyzer:
+            return {"error": "Memory not enabled"}
+        
+        return self.enhanced_analyzer.get_performance_stats()
+    
+    def _investigate_with_memory(self, incident_data: Dict, session_id: Optional[str] = None) -> EnhancedAnalysisResult:
+        """Perform investigation using the memory-enabled analyzer"""
+        # Create or use existing session
+        if not session_id:
+            session_id = create_conversation("professional_investigation", incident_data.get('id'))
+        
+        # Build conversation messages
+        messages = []
+        
+        # Add conversation history if memory is enabled
+        if self.enable_memory:
+            memory_messages = get_conversation_messages(session_id, 50000)  # More tokens for professional analysis
+            messages.extend(memory_messages)
+        
+        # System prompt
+        if not messages or messages[0]['role'] != 'system':
+            messages.insert(0, {'role': 'system', 'content': self.system_prompt})
+        
+        # User prompt
+        user_prompt = self._build_investigation_prompt(incident_data)
+        messages.append({'role': 'user', 'content': user_prompt})
+        
+        # Save messages to memory
+        if self.enable_memory:
+            if not get_conversation_messages(session_id):  # First message
+                add_conversation_message(session_id, 'system', self.system_prompt)
+            add_conversation_message(session_id, 'user', user_prompt)
+        
+        # Make API call through enhanced analyzer
+        result = self._make_enhanced_investigation_call(messages)
+        
+        # Save response to memory
+        if self.enable_memory and result:
+            add_conversation_message(session_id, 'assistant', json.dumps(result, default=str))
+        
+        return EnhancedAnalysisResult(
+            analysis_id=f"investigation_{int(datetime.now().timestamp())}",
+            session_id=session_id,
+            analysis_type="professional_investigation",
+            result=result,
+            confidence=0.85,
+            token_usage={'input': 2000, 'output': 1000, 'total': 3000},
+            cost=0.005,
+            cached=False,
+            processing_time=2.0,
+            created_at=datetime.now()
+        )
+    
+    def _make_enhanced_investigation_call(self, messages: List[Dict[str, str]]) -> Dict:
+        """Make API call for professional investigation"""
+        try:
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+
+            # Use function calling for structured results
+            data = {
+                "model": "gpt-4o",
+                "messages": messages,
+                "functions": [self._create_investigation_function_schema()],
+                "function_call": {"name": "conduct_professional_investigation"},
+                "temperature": 0.1,
+                "max_tokens": 4000
+            }
+
+            response = requests.post(url, headers=headers, json=data, timeout=60)
+
+            if response.status_code == 200:
+                result = response.json()
+                message = result['choices'][0]['message']
+                
+                if 'function_call' in message:
+                    function_result = json.loads(message['function_call']['arguments'])
+                    return function_result
+                else:
+                    # Fallback to text parsing
+                    return {"raw_analysis": message['content']}
+            else:
+                logger.error(f"OpenAI API call failed: {response.status_code}")
+                return {"error": f"API call failed: {response.status_code}"}
+
+        except Exception as e:
+            logger.error(f"Enhanced investigation call failed: {e}")
+            return {"error": str(e)}
+    
+    def _convert_enhanced_to_investigation_result(self, enhanced_result: EnhancedAnalysisResult, 
+                                                incident_data: Dict) -> InvestigationResult:
+        """Convert EnhancedAnalysisResult to InvestigationResult format"""
+        try:
+            result_data = enhanced_result.result
+            
+            if "error" in result_data:
+                return self._fallback_investigation(incident_data)
+            
+            # Parse findings
+            findings = []
+            for f in result_data.get("findings", []):
+                findings.append(InvestigationFinding(
+                    category=f.get("category", "General"),
+                    finding=f.get("finding", ""),
+                    evidence=f.get("evidence", []),
+                    severity=f.get("severity", "MEDIUM"),
+                    confidence=f.get("confidence", 0.5),
+                    recommendations=f.get("recommendations", [])
+                ))
+            
+            # Parse Swiss Cheese analysis
+            swiss_cheese_analysis = []
+            for layer in result_data.get("swiss_cheese_analysis", []):
+                swiss_cheese_analysis.append(SwissCheeseLayer(
+                    layer_name=layer.get("layer_name", ""),
+                    layer_type=layer.get("layer_type", ""),
+                    defects=layer.get("defects", []),
+                    barriers=layer.get("barriers", []),
+                    effectiveness=layer.get("effectiveness", 0.5),
+                    failure_mode=layer.get("failure_mode", "")
+                ))
+            
+            return InvestigationResult(
+                executive_summary=result_data.get("executive_summary", ""),
+                findings=findings,
+                swiss_cheese_analysis=swiss_cheese_analysis,
+                timeline_reconstruction=result_data.get("timeline_reconstruction", []),
+                contributing_factors=result_data.get("contributing_factors", {}),
+                safety_barriers=result_data.get("safety_barriers", {}),
+                risk_assessment=result_data.get("risk_assessment", {}),
+                recommendations=result_data.get("recommendations", []),
+                lessons_learned=result_data.get("lessons_learned", []),
+                confidence_score=enhanced_result.confidence,
+                analysis_timestamp=enhanced_result.created_at.isoformat()
+            )
+        except Exception as e:
+            logger.error(f"Error converting enhanced investigation result: {e}")
             return self._fallback_investigation(incident_data)
 
     def _llm_investigation(self, incident_data: Dict) -> InvestigationResult:
