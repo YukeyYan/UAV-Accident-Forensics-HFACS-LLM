@@ -47,67 +47,139 @@ except ImportError:
     # English-only system initialization
     st.session_state.selected_language = 'en'
 
-# 自定义CSS - 增强版美观样式
+# 自定义CSS - 航空主题美观样式
 st.markdown("""
 <style>
-    /* 主标题样式 */
+    /* 全局航空主题背景 */
+    .main .block-container {
+        background: linear-gradient(180deg, #e6f3ff 0%, #f0f8ff 50%, #ffffff 100%);
+        background-attachment: fixed;
+        position: relative;
+    }
+    
+    /* 航空主题装饰元素 */
+    .main .block-container::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+            radial-gradient(circle at 20% 80%, rgba(30, 64, 175, 0.03) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+            radial-gradient(circle at 40% 40%, rgba(147, 197, 253, 0.03) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: -1;
+    }
+    
+    /* 主标题样式 - 航空主题 */
     .main-header {
         font-size: 2.8rem;
         font-weight: 700;
-        color: black;
+        color: #1e40af;
         text-align: center;
         margin-bottom: 2rem;
         padding: 1rem 0;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-shadow: 0 2px 4px rgba(30, 64, 175, 0.2);
+        position: relative;
+        z-index: 100;
     }
     
-    /* 子标题样式 */
+    /* 航空装饰线条 */
+    .main-header::after {
+        content: "✈️ ━━━━━━━━━━━━━━━━━━━━━━━ 🚁";
+        display: block;
+        font-size: 1rem;
+        margin-top: 1rem;
+        color: #3b82f6;
+        opacity: 0.7;
+    }
+    
+    /* 子标题样式 - 航空跑道主题 */
     .sub-header {
-        font-size: 1.8rem;
+        font-size: 2.2rem;
         font-weight: 600;
-        color: #2c3e50;
+        color: #1e40af;
         margin-top: 2.5rem;
         margin-bottom: 1.5rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 3px solid #3498db;
-        background: linear-gradient(90deg, #3498db, #e8f4f8);
-        background-size: 100% 3px;
-        background-repeat: no-repeat;
-        background-position: bottom;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border-left: 4px solid #3b82f6;
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.1);
+        position: relative;
     }
     
-    /* 风险等级样式 - 增强版 */
+    /* 无人机装饰 */
+    .sub-header::before {
+        content: "🚁";
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 1.8rem;
+        opacity: 0.6;
+        animation: droneHover 3s ease-in-out infinite;
+    }
+    
+    /* 风险等级样式 - 航空警示主题 */
     .risk-high {
-        background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-        border-left: 6px solid #e53e3e;
-        border-radius: 8px;
-        padding: 1rem 1.2rem;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border-left: 6px solid #dc2626;
+        border-radius: 12px;
+        padding: 1.2rem 1.5rem;
         margin: 1rem 0;
-        box-shadow: 0 4px 6px rgba(229, 62, 62, 0.1);
+        box-shadow: 0 4px 6px rgba(220, 38, 38, 0.15);
         position: relative;
         overflow: hidden;
+    }
+    
+    .risk-high::before {
+        content: "🚨";
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 1.6rem;
+        animation: pulse 2s infinite;
     }
     
     .risk-medium {
-        background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
-        border-left: 6px solid #ff9800;
-        border-radius: 8px;
-        padding: 1rem 1.2rem;
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border-left: 6px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1.2rem 1.5rem;
         margin: 1rem 0;
-        box-shadow: 0 4px 6px rgba(255, 152, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(245, 158, 11, 0.15);
         position: relative;
         overflow: hidden;
     }
     
+    .risk-medium::before {
+        content: "⚠️";
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 1.6rem;
+    }
+    
     .risk-low {
-        background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c8 100%);
-        border-left: 6px solid #4caf50;
-        border-radius: 8px;
-        padding: 1rem 1.2rem;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border-left: 6px solid #16a34a;
+        border-radius: 12px;
+        padding: 1.2rem 1.5rem;
         margin: 1rem 0;
-        box-shadow: 0 4px 6px rgba(76, 175, 80, 0.1);
+        box-shadow: 0 4px 6px rgba(22, 163, 74, 0.15);
         position: relative;
         overflow: hidden;
+    }
+    
+    .risk-low::before {
+        content: "✅";
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 1.6rem;
     }
     
     /* Streamlit组件美化 */
@@ -124,21 +196,26 @@ st.markdown("""
     }
     
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
         color: white;
         border: none;
-        border-radius: 8px;
-        padding: 0.6rem 1.5rem;
+        border-radius: 10px;
+        padding: 0.9rem 2.2rem;
         font-weight: 600;
-        font-size: 1rem;
-        box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
+        font-size: 1.2rem;
+        box-shadow: 0 4px 6px rgba(30, 64, 175, 0.3);
         transition: all 0.3s ease;
         cursor: pointer;
+        position: relative;
+        overflow: hidden;
     }
+    
+    /* Remove duplicate icons from buttons */
     
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 12px rgba(30, 64, 175, 0.4);
+        background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
     }
     
     .stButton > button:active {
@@ -150,7 +227,7 @@ st.markdown("""
     [data-testid="metric-container"] {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         border: 1px solid #e2e8f0;
-        padding: 1rem;
+        padding: 1.2rem;
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         transition: all 0.3s ease;
@@ -173,22 +250,22 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: #f1f5f9;
-        padding: 0.8rem;
+        padding: 1rem;
         border-radius: 12px;
         border: 1px solid #e2e8f0;
     }
     
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
-        padding: 0.8rem 1.2rem;
+        padding: 1.1rem 1.8rem;
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 1.2rem;
         transition: all 0.3s ease;
         background-color: #ffffff;
         color: #475569 !important;
         border: 1px solid #e2e8f0;
         margin: 2px;
-        min-height: 40px;
+        min-height: 50px;
         display: flex;
         align-items: center;
     }
@@ -223,8 +300,9 @@ st.markdown("""
     .streamlit-expanderHeader {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         border-radius: 8px;
-        padding: 0.8rem 1rem;
+        padding: 1.2rem 1.4rem;
         font-weight: 600;
+        font-size: 1.3rem;
         border: 1px solid #e2e8f0;
     }
     
@@ -238,8 +316,8 @@ st.markdown("""
     .stTextArea > div > div > textarea {
         border-radius: 8px;
         border: 2px solid #e1e8ed;
-        padding: 0.75rem;
-        font-size: 1rem;
+        padding: 1rem;
+        font-size: 1.2rem;
         transition: all 0.3s ease;
     }
     
@@ -319,7 +397,7 @@ st.markdown("""
         background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
     }
     
-    /* 动画效果 */
+    /* 航空主题动画效果 */
     @keyframes fadeInUp {
         from {
             opacity: 0;
@@ -331,8 +409,160 @@ st.markdown("""
         }
     }
     
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.7;
+            transform: scale(1.1);
+        }
+    }
+    
+    @keyframes radarSweep {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+    
+    @keyframes flightPath {
+        0% {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        10%, 90% {
+            opacity: 1;
+        }
+        100% {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes droneHover {
+        0%, 100% {
+            transform: translateY(-50%) rotateZ(0deg);
+        }
+        25% {
+            transform: translateY(-52%) rotateZ(-2deg);
+        }
+        50% {
+            transform: translateY(-48%) rotateZ(0deg);
+        }
+        75% {
+            transform: translateY(-52%) rotateZ(2deg);
+        }
+    }
+    
+    @keyframes droneFlight {
+        0% {
+            transform: translateX(-50px) rotateZ(-5deg);
+            opacity: 0.8;
+        }
+        50% {
+            transform: translateX(0px) rotateZ(0deg);
+            opacity: 1;
+        }
+        100% {
+            transform: translateX(50px) rotateZ(5deg);
+            opacity: 0.8;
+        }
+    }
+    
+    /* 雷达扫描装饰 */
+    .radar-decoration {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border: 2px solid #3b82f6;
+        border-radius: 50%;
+        opacity: 0.3;
+        z-index: 50;
+    }
+    
+    .radar-decoration::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 2px;
+        height: 25px;
+        background: #3b82f6;
+        transform-origin: bottom;
+        transform: translate(-50%, -100%) rotate(0deg);
+        animation: radarSweep 4s linear infinite;
+    }
+    
     .main .block-container {
         animation: fadeInUp 0.6s ease-out;
+    }
+    
+    /* 航空指标卡片增强 */
+    [data-testid="metric-container"] {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 2px solid #bae6fd;
+        padding: 1.2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    [data-testid="metric-container"]::before {
+        content: "🚁";
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        font-size: 1.3rem;
+        opacity: 0.6;
+        animation: droneHover 4s ease-in-out infinite;
+    }
+    
+    /* Drone flight path decoration */
+    .drone-flight-path {
+        position: fixed;
+        top: 15%;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        pointer-events: none;
+        z-index: 10;
+        overflow: hidden;
+    }
+    
+    .drone-icon {
+        position: absolute;
+        font-size: 1.5rem;
+        animation: droneFlight 8s ease-in-out infinite;
+        top: -15px;
+    }
+    
+    /* Enhanced drone elements */
+    .drone-status-indicator {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        border-radius: 50px;
+        padding: 0.8rem 1.4rem;
+        color: white;
+        font-size: 1.1rem;
+        font-weight: 700;
+        box-shadow: 0 4px 6px rgba(30, 64, 175, 0.3);
+        z-index: 100;
+    }
+    
+    .drone-status-indicator::before {
+        content: "🚁";
+        margin-right: 0.5rem;
+        animation: pulse 2s infinite;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -427,6 +657,20 @@ class ASRSApp:
         """运行主应用"""
         lang = st.session_state.selected_language
         st.markdown(f'<h1 class="main-header">{get_text("main_header", lang)}</h1>', unsafe_allow_html=True)
+        
+        # Add drone theme decorative elements
+        st.markdown("""
+        <div class="radar-decoration"></div>
+        <div class="drone-flight-path">
+            <div class="drone-icon">🚁</div>
+        </div>
+        <div class="drone-status-indicator">
+            DRONE SYSTEM ACTIVE
+        </div>
+        <div style="text-align: center; margin: 1rem 0; color: #3b82f6; font-size: 1.6rem;">
+            🚁 ═══ 🛩️ ═══ 🚁 ═══ 🛸 ═══ 🚁
+        </div>
+        """, unsafe_allow_html=True)
         
         # 侧边栏配置
         with st.sidebar:
@@ -1652,7 +1896,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             <h2 style='color: white; text-align: center; margin: 0; font-weight: bold;'>
                 🔗 Professional Causal Analysis Results
             </h2>
-            <p style='color: white; text-align: center; margin: 0; font-size: 16px; opacity: 0.9;'>
+            <p style='color: white; text-align: center; margin: 0; font-size: 18px; opacity: 0.9;'>
                 Comprehensive incident causal relationship analysis and risk assessment
             </p>
         </div>
@@ -2576,7 +2820,7 @@ Example: At 2:30 PM on March 15, 2024, during DJI Phantom 4 training flight near
             <h2 style='color: white; text-align: center; margin: 0; font-weight: bold;'>
                 🧠 Professional LLM Expert Analysis
             </h2>
-            <p style='color: white; text-align: center; margin: 0; font-size: 16px; opacity: 0.9;'>
+            <p style='color: white; text-align: center; margin: 0; font-size: 18px; opacity: 0.9;'>
                 Advanced AI-powered comprehensive incident analysis with multi-dimensional insights
             </p>
         </div>
