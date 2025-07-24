@@ -21,9 +21,10 @@ logs/
 data/*.db
 *.db
 
-# Large data files
-data/ASRS_DBOnline_Report.csv
+# Large data files (but keep the main dataset)
+# data/ASRS_DBOnline_Report.csv  # Allow this file for deployment
 *.csv
+!data/ASRS_DBOnline_Report.csv
 
 # Streamlit secrets
 .streamlit/secrets.toml
