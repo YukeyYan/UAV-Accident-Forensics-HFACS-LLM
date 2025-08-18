@@ -11,6 +11,211 @@ Complete pattern documentation, including definitions, sources, indicators, and 
 
 \url{https://github.com/YukeyYan/UAV-Accident-Forensics-HFACS-LLM}
 
+\section{UAV Enhancement Patterns Details}
+\label{appendix:patterns_details}
+
+Tables~\ref{tab:uav_enhancement_patterns_part1} and~\ref{tab:uav_enhancement_patterns_part2} provide detailed documentation of the 26 UAV-specific enhancement patterns with representative case examples from ASRS incident reports.
+
+% Include the first table (Organizational and Supervisory levels)
+\begin{table*}[!htbp]
+\centering
+\caption{UAV-Specific Enhancement Patterns: Organizational and Supervisory Levels}
+\label{tab:uav_enhancement_patterns_part1}
+\begin{adjustbox}{width=\textwidth,center}
+\begin{threeparttable}
+\footnotesize
+\begin{tabular}{@{}p{2.0cm}p{3.5cm}p{5.0cm}p{4.5cm}@{}}
+\toprule
+\textbf{HFACS Level} & \textbf{Enhancement Pattern} & \textbf{Definition} & \textbf{Representative Case Example} \\
+\midrule
+
+% Level 4: Organizational Influences
+\rowcolor{blue!10}
+\multicolumn{4}{c}{\textbf{Level 4: Organizational Influences (6 patterns)}} \\
+\midrule
+
+\textbf{Organizational Influences (L4)}
+& \textbf{Part 107 Compliance}
+& Organizational challenges in maintaining compliance with FAA Part 107 small UAS regulations
+& Commercial operator failed to maintain current remote pilot certificates for 40\% of flight crew, resulting in unauthorized operations \\
+\addlinespace[0.2ex]
+
+& \textbf{LAANC Authorization}
+& Organizational processes for Low Altitude Authorization and Notification Capability
+& Delivery company's automated LAANC requests contained systematic altitude errors, causing 15 unauthorized airspace penetrations \\
+\addlinespace[0.2ex]
+
+& \textbf{VLOS Requirements}
+& Organizational management of Visual Line of Sight operational requirements
+& Survey company's policy allowed operations up to 2 miles without visual observers, violating VLOS requirements \\
+\addlinespace[0.2ex]
+
+& \textbf{BVLOS Operations}
+& Organizational challenges in Beyond Visual Line of Sight operations
+& Research institution conducted BVLOS flights without proper waiver, lacking required detect-and-avoid systems \\
+\addlinespace[0.2ex]
+
+& \textbf{Battery Constraints}
+& Organizational resource management for power system limitations
+& Fleet operator's inadequate battery replacement schedule led to 30\% capacity degradation and multiple forced landings \\
+\addlinespace[0.2ex]
+
+& \textbf{Energy Management}
+& Organizational strategies for UAV energy and endurance management
+& Emergency response team lacked standardized battery management protocols, causing mission failures during critical operations \\
+\midrule
+
+% Level 3: Unsafe Supervision
+\rowcolor{green!10}
+\multicolumn{4}{c}{\textbf{Level 3: Unsafe Supervision (5 patterns)}} \\
+\midrule
+
+\textbf{Unsafe Supervision (L3)}
+& \textbf{GCS Interface Complexity}
+& Supervisory challenges in managing Ground Control Station interface complexity
+& Supervisor failed to ensure pilot training on new GCS software, leading to mode confusion during critical mission \\
+\addlinespace[0.2ex]
+
+& \textbf{Delayed Feedback Systems}
+& Supervisory management of delayed feedback in remote operations
+& Operations manager did not account for 200ms video latency in flight planning, causing multiple near-miss incidents \\
+\addlinespace[0.2ex]
+
+& \textbf{LAANC Integration}
+& Supervisory oversight of LAANC system integration and usage
+& Flight supervisor approved operations without verifying LAANC authorization status, resulting in controlled airspace violation \\
+\addlinespace[0.2ex]
+
+& \textbf{Airspace Authorization}
+& Supervisory management of airspace authorization processes
+& Chief pilot failed to establish procedures for real-time airspace status monitoring, causing TFR violations \\
+\addlinespace[0.2ex]
+
+& \textbf{Emergency Procedures}
+& Supervisory oversight of UAV-specific emergency procedures
+& Training supervisor did not require C2 link loss simulation, leaving pilots unprepared for actual communication failure \\
+
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item All patterns derived from systematic analysis of 847 ASRS UAV incident reports (2016-2023).
+\item Case examples are anonymized and representative of multiple similar incidents.
+\end{tablenotes}
+\end{threeparttable}
+\end{adjustbox}
+\end{table*}
+
+% Include the second table (Preconditions and Unsafe Acts levels)
+\begin{table*}[!htbp]
+\centering
+\caption{UAV-Specific Enhancement Patterns: Preconditions and Unsafe Acts Levels}
+\label{tab:uav_enhancement_patterns_part2}
+\begin{adjustbox}{width=\textwidth,center}
+\begin{threeparttable}
+\footnotesize
+\begin{tabular}{@{}p{2.0cm}p{3.5cm}p{5.0cm}p{4.5cm}@{}}
+\toprule
+\textbf{HFACS Level} & \textbf{Enhancement Pattern} & \textbf{Definition} & \textbf{Representative Case Example} \\
+\midrule
+
+% Level 2: Preconditions for Unsafe Acts
+\rowcolor{orange!10}
+\multicolumn{4}{c}{\textbf{Level 2: Preconditions for Unsafe Acts (11 patterns)}} \\
+\midrule
+
+\textbf{Preconditions (L2)}
+& \textbf{C2 Link Reliability}
+& Command and Control link reliability as precondition for safe operations
+& Pilot lost C2 link for 45 seconds due to interference, unable to regain control before UAV entered restricted airspace \\
+\addlinespace[0.2ex]
+
+& \textbf{Telemetry Accuracy}
+& Accuracy and timeliness of telemetry data transmission
+& GPS altitude readings were 50ft inaccurate due to multipath interference, causing terrain collision during low-altitude survey \\
+\addlinespace[0.2ex]
+
+& \textbf{Range Limitations}
+& Communication and control range limitations affecting operations
+& Pilot attempted operation at 3-mile range despite 2-mile equipment limitation, resulting in complete signal loss \\
+\addlinespace[0.2ex]
+
+& \textbf{Signal Degradation}
+& Progressive degradation of communication signals during operations
+& Gradual signal weakening over 10 minutes went unnoticed, leading to delayed response during emergency maneuver \\
+\addlinespace[0.2ex]
+
+& \textbf{Mode Confusion}
+& Confusion between different flight modes and automation levels
+& Pilot believed UAV was in manual mode but was actually in GPS hold, causing unexpected behavior during landing approach \\
+\addlinespace[0.2ex]
+
+& \textbf{Automation Dependency}
+& Over-reliance on automated systems affecting manual skills
+& When autopilot failed, pilot's degraded manual flying skills resulted in hard landing and structural damage \\
+\addlinespace[0.2ex]
+
+& \textbf{Weather Sensitivity}
+& UAV sensitivity to weather conditions affecting operations
+& 15-knot crosswind exceeded small UAV's capability, but pilot continued operation resulting in loss of control \\
+\addlinespace[0.2ex]
+
+& \textbf{Spatial Disorientation}
+& Loss of spatial orientation due to remote operation characteristics
+& Pilot lost orientation during FPV flight in featureless terrain, unable to determine UAV attitude or position \\
+\addlinespace[0.2ex]
+
+& \textbf{Visual Limitations}
+& Limited visual references and environmental cues in remote operations
+& Camera's limited field of view prevented detection of approaching aircraft until collision was unavoidable \\
+\addlinespace[0.2ex]
+
+& \textbf{Battery Limits}
+& Battery capacity and performance limitations affecting operations
+& Cold weather reduced battery performance by 40\%, causing unexpected power loss during return flight \\
+\addlinespace[0.2ex]
+
+& \textbf{Automation Degradation}
+& Degradation of automated system performance over time
+& Uncalibrated IMU caused gradual drift in autonomous flight path, leading to controlled airspace violation \\
+\midrule
+
+% Level 1: Unsafe Acts
+\rowcolor{red!10}
+\multicolumn{4}{c}{\textbf{Level 1: Unsafe Acts (4 patterns)}} \\
+\midrule
+
+\textbf{Unsafe Acts (L1)}
+& \textbf{Autopilot Interactions}
+& Errors in interaction with autopilot systems and mode management
+& Pilot incorrectly programmed waypoint altitude as 400ft AGL instead of MSL, causing terrain collision \\
+\addlinespace[0.2ex]
+
+& \textbf{Flight Mode Switching}
+& Errors during transitions between different flight modes
+& Rapid switching between manual and GPS modes during emergency caused control oscillations and crash \\
+\addlinespace[0.2ex]
+
+& \textbf{Limited Visual References}
+& Errors due to limited visual references in remote operations
+& Pilot misjudged distance to obstacle due to camera perspective, resulting in collision with power line \\
+\addlinespace[0.2ex]
+
+& \textbf{Delayed Feedback}
+& Errors caused by delayed feedback from remote systems
+& 300ms video delay caused pilot to overcorrect during landing, resulting in hard impact and damage \\
+
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item Patterns organized by HFACS hierarchical levels from organizational (L4) to individual acts (L1).
+\item All case examples anonymized and derived from validated ASRS incident analysis.
+\end{tablenotes}
+\end{threeparttable}
+\end{adjustbox}
+\end{table*}
+
 \section{Data and Code Availability}
 \label{appendix:data_code}
 
