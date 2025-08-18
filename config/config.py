@@ -12,6 +12,10 @@ class Config:
     APP_NAME = "ASRS无人机事故智能分析系统"
     APP_VERSION = "1.0.0"
     DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+
+    # 项目仓库配置
+    GITHUB_REPOSITORY_URL = "https://github.com/YukeyYan/UAV-Accident-Forensics-HFACS-LLM"
+    SUPPLEMENTARY_MATERIALS_URL = f"{GITHUB_REPOSITORY_URL}/tree/master/05_Paper/Appendix"
     
     # 数据库配置
     DATABASE_PATH = os.getenv('DATABASE_PATH', 'asrs_data.db')
