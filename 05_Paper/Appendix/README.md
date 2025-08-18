@@ -1,20 +1,21 @@
-# Paper Appendix - UAV Enhancement Patterns
+# Paper Supplementary Materials - UAV Enhancement Patterns
 
 ## 📋 Overview
 
-This directory contains supplementary materials for the research paper:
+This directory contains detailed supplementary materials for the research paper:
 
 **"UAV Accident Forensics using HFACS and Large Language Models"**
 
 ## 📁 Contents
 
-### `appendix_uav_enhancement_patterns.tex`
-Complete LaTeX appendix containing:
+### `UAV_Enhancement_Patterns_Complete.md`
+Complete documentation containing:
 
 - **26 UAV Enhancement Patterns** organized by HFACS levels
 - **Detailed pattern definitions** with sources and indicators
 - **HFACS category mappings** for each pattern
 - **5 Theoretical categories** grouping related patterns
+- **Complete validation statistics** and methodology
 
 ## 🎯 Purpose
 
