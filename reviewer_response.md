@@ -11,7 +11,7 @@
 
 ### 📊 **Expert-Annotated UAV Accident Dataset - Now Available**
 
-In direct response to the reviewer's recommendation, we have developed a comprehensive, expert-annotated dataset that provides the comparable reports requested. This dataset represents a significant contribution to the UAV safety research community and directly addresses the reviewer's concerns about validation data.
+In direct response to the reviewer's recommendation, we have developed and released a comprehensive, expert-annotated dataset (`ground_truth_standard_coded.csv`) that provides exactly the comparable reports requested. This dataset represents a significant contribution to the UAV safety research community and directly addresses the reviewer's concerns about validation data.
 
 ### 🎯 **Dataset Specifications**
 
@@ -66,9 +66,10 @@ The dataset also addresses the reviewer's concern about quantitative metrics by 
 
 The complete dataset is available at:
 - **Repository**: https://github.com/YukeyYan/UAV-Accident-Forensics-HFACS-LLM
+- **Dataset File**: `data/ground_truth/ground_truth_standard_coded.csv` (200 records)
 - **Documentation**: Complete technical specifications and usage examples
 - **Sample Data**: Preview dataset available for immediate evaluation
-- **API Access**: Programmatic access for research applications
+- **Verification**: `python -c "import pandas as pd; print(pd.read_csv('data/ground_truth/ground_truth_standard_coded.csv').shape)"`
 
 ### 📚 **Citation and Attribution**
 
