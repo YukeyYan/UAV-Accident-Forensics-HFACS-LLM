@@ -1,0 +1,12 @@
+{
+  "dataset_name": "UAV Accident Forensics Ground Truth Dataset",
+  "version": "1.0.0",
+  "created_date": "2025-09-29T10:01:24.745702",
+  "source_file": "ground_truth_standard_coded.csv",
+  "md5_checksum": "433cdc8aeb970ac718c786a99a317ed7",
+  "total_records": 200,
+  "total_columns": 62,
+  "hfacs_categories": 18,
+  "file_size_mb": 0.56,
+  "validation_date": "2025-09-29T10:01:24.742529"
+}

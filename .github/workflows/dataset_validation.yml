@@ -1,0 +1,200 @@
+name: Dataset Validation
+
+on:
+  push:
+    paths:
+      - 'data/**'
+      - 'dataset_metadata.json'
+  pull_request:
+    paths:
+      - 'data/**'
+      - 'dataset_metadata.json'
+  workflow_dispatch:
+
+jobs:
+  validate-dataset:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy jsonschema hashlib-compat
+        
+    - name: Validate dataset structure
+      run: |
+        python -c "
+        import pandas as pd
+        import os
+        import json
+        import hashlib
+        
+        print('🔍 Validating dataset structure...')
+        
+        # Check if dataset exists
+        dataset_path = 'data/ground_truth/ground_truth_standard_coded.csv'
+        if not os.path.exists(dataset_path):
+            print('❌ Dataset file not found')
+            exit(1)
+        
+        # Load and validate CSV
+        try:
+            df = pd.read_csv(dataset_path)
+            print(f'✅ Dataset loaded: {df.shape}')
+        except Exception as e:
+            print(f'❌ Failed to load dataset: {e}')
+            exit(1)
+        
+        # Check required columns
+        required_cols = ['acn', 'synopsis', 'narrative']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            print(f'❌ Missing required columns: {missing_cols}')
+            exit(1)
+        
+        # Check HFACS categories
+        hfacs_present = [col for col in df.columns if col.endswith('_Present')]
+        hfacs_confidence = [col for col in df.columns if col.endswith('_Confidence')]
+        
+        if len(hfacs_present) < 15:
+            print(f'❌ Insufficient HFACS categories: {len(hfacs_present)}')
+            exit(1)
+            
+        print(f'✅ Found {len(hfacs_present)} HFACS categories')
+        print(f'✅ Found {len(hfacs_confidence)} confidence scores')
+        
+        # Validate data types
+        for col in hfacs_present:
+            if not df[col].dtype in ['int64', 'bool']:
+                print(f'❌ Invalid data type for {col}: {df[col].dtype}')
+                exit(1)
+        
+        for col in hfacs_confidence:
+            if not df[col].dtype in ['float64', 'int64']:
+                print(f'❌ Invalid data type for {col}: {df[col].dtype}')
+                exit(1)
+        
+        # Check confidence ranges
+        for col in hfacs_confidence:
+            if df[col].min() < 0 or df[col].max() > 1:
+                print(f'❌ Confidence scores out of range for {col}')
+                exit(1)
+        
+        print('✅ All validations passed!')
+        "
+        
+    - name: Validate metadata
+      run: |
+        python -c "
+        import json
+        import os
+        
+        print('🔍 Validating metadata...')
+        
+        # Check metadata file
+        metadata_path = 'dataset_metadata.json'
+        if not os.path.exists(metadata_path):
+            print('❌ Metadata file not found')
+            exit(1)
+        
+        try:
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+            print('✅ Metadata loaded successfully')
+        except Exception as e:
+            print(f'❌ Failed to load metadata: {e}')
+            exit(1)
+        
+        # Check required metadata fields
+        required_fields = ['dataset_info', 'data_specifications', 'hfacs_categories']
+        for field in required_fields:
+            if field not in metadata:
+                print(f'❌ Missing metadata field: {field}')
+                exit(1)
+        
+        print('✅ Metadata validation passed!')
+        "
+        
+    - name: Generate dataset report
+      run: |
+        python -c "
+        import pandas as pd
+        import json
+        from datetime import datetime
+        
+        print('📊 Generating dataset report...')
+        
+        # Load dataset
+        df = pd.read_csv('data/ground_truth/ground_truth_standard_coded.csv')
+        
+        # Generate statistics
+        hfacs_present = [col for col in df.columns if col.endswith('_Present')]
+        category_freq = df[hfacs_present].sum().sort_values(ascending=False)
+        
+        report = {
+            'validation_date': datetime.now().isoformat(),
+            'total_records': len(df),
+            'total_columns': len(df.columns),
+            'hfacs_categories': len(hfacs_present),
+            'top_categories': category_freq.head(5).to_dict(),
+            'data_completeness': (1 - df.isnull().sum().sum() / (len(df) * len(df.columns))),
+            'validation_status': 'PASSED'
+        }
+        
+        # Save report
+        with open('dataset_validation_report.json', 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        print('✅ Dataset report generated')
+        print(f'Records: {report[\"total_records\"]}')
+        print(f'Categories: {report[\"hfacs_categories\"]}')
+        print(f'Completeness: {report[\"data_completeness\"]:.3f}')
+        "
+        
+    - name: Upload validation report
+      uses: actions/upload-artifact@v3
+      with:
+        name: dataset-validation-report
+        path: dataset_validation_report.json
+        
+    - name: Comment on PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          
+          try {
+            const report = JSON.parse(fs.readFileSync('dataset_validation_report.json', 'utf8'));
+            
+            const comment = `## 📊 Dataset Validation Report
+            
+            ✅ **Validation Status**: ${report.validation_status}
+            
+            ### Dataset Statistics
+            - **Records**: ${report.total_records}
+            - **HFACS Categories**: ${report.hfacs_categories}
+            - **Data Completeness**: ${(report.data_completeness * 100).toFixed(1)}%
+            
+            ### Top HFACS Categories
+            ${Object.entries(report.top_categories).map(([cat, freq]) => `- ${cat}: ${freq}`).join('\n')}
+            
+            *Validation completed at: ${report.validation_date}*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('Could not create PR comment:', error);
+          }
