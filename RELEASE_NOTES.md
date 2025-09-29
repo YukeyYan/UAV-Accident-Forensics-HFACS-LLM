@@ -6,7 +6,7 @@ We are excited to announce the first public release of our comprehensive UAV acc
 
 ### 🎯 Release Highlights
 
-- **📋 200 Expert-Annotated UAV Incidents**: Carefully curated from ASRS database
+- **📋 200 Expert-Annotated UAV Incidents**: Carefully curated from aviation safety databases
 - **🎯 3,600 Coded Data Points**: Complete HFACS 8.0 classifications
 - **👨‍💼 Professional Validation**: Certified aviation safety experts (κ = 0.823)
 - **📊 Research-Grade Quality**: Ready for academic and commercial applications

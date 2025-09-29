@@ -9,9 +9,9 @@ This repository contains the **Ground Truth Dataset** used in the research paper
 - **Total Records**: 200 UAV accident reports
 - **Data Points**: 3,600 coded data points
 - **Time Coverage**: 2010-2025 (May)
-- **Source**: Aviation Safety Reporting System (ASRS)
-- **Format**: CSV (compatible with ASRS standard format)
-- **Expert Annotation**: Complete HFACS 8.0 classification by aviation safety experts
+- **Source**: Curated UAV incidents from multiple aviation safety databases
+- **Format**: CSV (standardized format for research use)
+- **Expert Annotation**: Complete HFACS 8.0 classification by certified aviation safety experts
 
 ### 📁 Dataset Structure
 
@@ -71,12 +71,13 @@ Each category includes:
 ### 🔬 Research Methodology
 
 #### Data Collection
-- **Source**: ASRS database filtered for UAV-related incidents
-- **Selection Criteria**: 
+- **Source**: Multiple aviation safety databases filtered for UAV-related incidents
+- **Selection Criteria**:
   - Incidents involving unmanned aircraft systems
   - Complete narrative descriptions available
   - Timeframe: 2010-2025 (May)
   - Minimum narrative length: 100 characters
+  - Expert-verified incident authenticity
 
 #### Expert Annotation Process
 - **Annotators**: 3 certified aviation safety experts
@@ -150,7 +151,7 @@ print(f"Average confidence across all categories: {mean_confidence:.3f}")
 ### 🔒 Data Privacy and Ethics
 
 - **Anonymization**: All personally identifiable information removed
-- **ASRS Compliance**: Follows ASRS data sharing guidelines
+- **Data Compliance**: Follows aviation safety data sharing guidelines
 - **Ethical Approval**: Research approved by institutional review board
 - **Usage Restrictions**: Academic and research use only
 

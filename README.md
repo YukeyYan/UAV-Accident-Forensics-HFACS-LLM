@@ -5,6 +5,54 @@
 [![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-green.svg)](https://openai.com/)
 
 ## 🚁 Overview
+
+## 📊 Ground Truth Dataset
+
+This repository now includes our **expert-annotated UAV accident dataset**:
+
+- **📋 200 UAV Accident Reports**: ASRS data (2010-2025)
+- **🎯 3,600 Coded Data Points**: Complete HFACS 8.0 classifications  
+- **👨‍💼 Expert Validated**: Inter-rater reliability κ = 0.823
+- **📊 Research Grade**: Ready for academic and commercial use
+
+### Quick Access
+```python
+# Load the dataset
+import pandas as pd
+df = pd.read_csv('data/ground_truth/ground_truth_standard_coded.csv')
+print(f"Dataset loaded: {df.shape} records")
+```
+
+**📚 Documentation**: See [DATASET_README.md](DATASET_README.md) for complete details.
+
+**📄 License**: CC BY 4.0 - Free for academic and commercial use with attribution.
+
+---
+
+
+## 📊 Ground Truth Dataset
+
+This repository now includes our **expert-annotated UAV accident dataset**:
+
+- **📋 200 UAV Accident Reports**: ASRS data (2010-2025)
+- **🎯 3,600 Coded Data Points**: Complete HFACS 8.0 classifications  
+- **👨‍💼 Expert Validated**: Inter-rater reliability κ = 0.823
+- **📊 Research Grade**: Ready for academic and commercial use
+
+### Quick Access
+```python
+# Load the dataset
+import pandas as pd
+df = pd.read_csv('data/ground_truth/ground_truth_standard_coded.csv')
+print(f"Dataset loaded: {df.shape} records")
+```
+
+**📚 Documentation**: See [DATASET_README.md](DATASET_README.md) for complete details.
+
+**📄 License**: CC BY 4.0 - Free for academic and commercial use with attribution.
+
+---
+
 Advanced incident analysis system combining HFACS human factors classification, causal analysis, and intelligent form assistance for UAV accident investigation.
 
 ## 📁 Project Structure
@@ -38,7 +86,8 @@ UAV/
 │   └── config.py            # Application configuration
 │
 ├── data/                    # Data files and databases
-│   ├── ASRS_DBOnline_Report.csv # ASRS incident data
+│   ├── ground_truth/        # Expert-annotated dataset
+│   │   └── ground_truth_standard_coded.csv # 200 UAV incidents (research dataset)
 │   ├── asrs_data.db         # SQLite database
 │   └── conversation_memory.db # Memory database
 │
@@ -382,12 +431,12 @@ OPENAI_TEMPERATURE=0.1
 
 #### **4. Data Preparation**
 ```bash
-# Place your ASRS dataset in the project root
-# Supported formats: CSV, Excel, JSON
-# Example: ASRS_UAV_Dataset.csv
+# The research dataset is already included in the repository
+# Located at: data/ground_truth/ground_truth_standard_coded.csv
+# Contains 200 expert-annotated UAV incidents
 
-# Verify data format compatibility
-python -c "import pandas as pd; print(pd.read_csv('your_dataset.csv').shape)"
+# Verify dataset is loaded correctly
+python -c "import pandas as pd; print(pd.read_csv('data/ground_truth/ground_truth_standard_coded.csv').shape)"
 ```
 
 #### **5. System Launch**
@@ -413,11 +462,11 @@ docker-compose up -d
 
 #### **1. Data Management**
 ```python
-# Load ASRS dataset
-from data_processor import DataProcessor
-processor = DataProcessor()
-processor.load_asrs_data('your_dataset.csv')
-print('Data loaded successfully!')
+# Load research dataset
+import pandas as pd
+df = pd.read_csv('data/ground_truth/ground_truth_standard_coded.csv')
+print(f'Dataset loaded successfully: {df.shape} records')
+print(f'HFACS categories: {len([c for c in df.columns if c.endswith("_Present")])}')
 ```
 
 #### **2. Intelligent Incident Analysis**
@@ -544,7 +593,7 @@ OPENAI_TEMPERATURE=0.3               # 生成温度
 
 # 数据库配置
 DATABASE_PATH=asrs_data.db           # 数据库路径
-CSV_DATA_PATH=ASRS_DBOnline 无人机事故报告).csv  # CSV文件路径
+RESEARCH_DATA_PATH=data/ground_truth/ground_truth_standard_coded.csv  # 研究数据集路径
 
 # 服务器配置
 STREAMLIT_SERVER_PORT=8501           # 端口

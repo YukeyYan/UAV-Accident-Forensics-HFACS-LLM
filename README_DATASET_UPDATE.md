@@ -6,7 +6,7 @@ We are excited to announce the availability of our **expert-annotated UAV accide
 
 ### 📈 Dataset Highlights
 
-- **📋 200 UAV Accident Reports**: Carefully selected from ASRS database (2010-2025)
+- **📋 200 UAV Accident Reports**: Carefully curated from aviation safety databases (2010-2025)
 - **🎯 3,600 Coded Data Points**: Complete HFACS 8.0 classifications
 - **👨‍💼 Expert Annotated**: Validated by certified aviation safety experts
 - **🔬 Research Grade**: Inter-rater reliability κ = 0.823

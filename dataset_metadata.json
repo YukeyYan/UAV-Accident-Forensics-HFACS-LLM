@@ -24,8 +24,8 @@
   },
   
   "data_source": {
-    "primary_source": "Aviation Safety Reporting System (ASRS)",
-    "source_organization": "NASA",
+    "primary_source": "Multiple Aviation Safety Databases",
+    "source_organization": "Various Aviation Safety Organizations",
     "data_type": "UAV incident reports",
     "selection_criteria": [
       "Incidents involving unmanned aircraft systems",
