@@ -33,7 +33,7 @@ uav_specific_risk_factors:
       primary_sources:
         - "FAA LAANC Concept of Operations v2.0 (2019)"
         - "FAA UAS Facility Maps Technical Specification (2020)"
-        - "Vance, S. M., & Malik, W. (2019). NASA/TM-2019-220292"
+        - "Kopardekar, P., et al. (2016). Unmanned aircraft system traffic management. IEEE/AIAA DASC"
         - "ASRS Reports: LAANC authorization issues (ACN 1650000+ series)"
       
     URF_03_vlos_requirements:
@@ -116,7 +116,7 @@ uav_specific_risk_factors:
       primary_sources:
         - "FAA LAANC Implementation Plan (2018)"
         - "UAS Service Supplier (USS) Technical Requirements (FAA, 2019)"
-        - "Kopardekar, P., et al. (2016). IEEE/AIAA Digital Avionics Systems Conf"
+        - "Kopardekar, P., et al. (2016). Unmanned aircraft system traffic management. IEEE/AIAA DASC"
         - "FAA UAS Integration Office Operational Analysis Reports (2020-2023)"
       
     URF_11_airspace_authorization:
